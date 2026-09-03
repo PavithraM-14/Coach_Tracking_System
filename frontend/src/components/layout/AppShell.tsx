@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -10,7 +10,7 @@ import {
   Layers,
   LogOut,
   Menu,
-  UserCircle,
+  User,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -72,10 +72,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <LayoutDashboard size={18} />
               Dashboard
             </NavLink>
-            <NavLink to="/profile" className={navLinkClass}>
-              <UserCircle size={18} />
-              My Profile
-            </NavLink>
             {items.length === 0 && (
               <p className="px-3 py-2 text-xs text-slate-400">No modules assigned to this role yet.</p>
             )}
@@ -88,14 +84,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </NavLink>
               );
             })}
+            <NavLink to="/profile" className={navLinkClass}>
+              <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                <User size={14} />
+              </span>
+              My Profile
+            </NavLink>
           </nav>
           <div className="border-t border-slate-100 px-3 py-3">
-            {user && (
-              <div className="px-1 pb-2">
-                <p className="truncate text-sm font-medium text-slate-800">{user.full_name}</p>
-                <p className="text-xs text-slate-500">{user.role}</p>
-              </div>
-            )}
             <button
               type="button"
               onClick={logout}
@@ -126,12 +122,22 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           {user && (
-            <div className="hidden flex-shrink-0 text-right sm:block">
-              <p className="text-sm font-medium text-slate-800">
-                Welcome, <span className="font-semibold">{user.full_name}</span>
-              </p>
-              <p className="text-xs text-slate-500">{user.role}</p>
-            </div>
+            <Link to="/profile" title="My Profile" className="flex flex-shrink-0 items-center gap-3">
+              <div className="hidden text-right sm:block">
+                <p className="text-sm font-medium text-slate-800">
+                  Welcome, <span className="font-semibold">{user.full_name}</span>
+                </p>
+                <p className="text-xs text-slate-500">{user.role}</p>
+              </div>
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                {user.full_name
+                  .split(" ")
+                  .map((part) => part[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase()}
+              </span>
+            </Link>
           )}
         </header>
         <main className="flex-1 overflow-y-auto overflow-x-auto px-6 py-6">{children}</main>

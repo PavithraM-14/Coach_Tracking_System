@@ -15,6 +15,7 @@ $coachTypes = $pdo->query(
      WHERE ct.is_active = 1
      ORDER BY ct.name'
 )->fetchAll();
+$coachCategories = $pdo->query('SELECT id, code, name FROM coach_categories WHERE is_active = 1 ORDER BY name')->fetchAll();
 
 Response::ok([
     'plants' => array_map(fn ($r) => ['id' => (int) $r['id'], 'code' => $r['code'], 'name' => $r['name']], $plants),
@@ -22,4 +23,7 @@ Response::ok([
     'coach_types' => array_map(fn ($r) => [
         'id' => (int) $r['id'], 'code' => $r['code'], 'name' => $r['name'], 'category_name' => $r['category_name'],
     ], $coachTypes),
+    'coach_categories' => array_map(fn ($r) => [
+        'id' => (int) $r['id'], 'code' => $r['code'], 'name' => $r['name'],
+    ], $coachCategories),
 ]);

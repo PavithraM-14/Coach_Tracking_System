@@ -19,6 +19,7 @@ CREATE TABLE users (
   employee_no VARCHAR(10) NOT NULL UNIQUE,
   full_name VARCHAR(100) NOT NULL,
   username VARCHAR(50) NOT NULL UNIQUE,
+  email VARCHAR(150) NULL UNIQUE,          -- used for Forgot Password OTP delivery
   password_hash VARCHAR(255) NOT NULL,
   role_id INT NOT NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
@@ -48,15 +49,21 @@ CREATE TABLE coach_categories (
   is_active TINYINT(1) NOT NULL DEFAULT 1
 );
 
--- A skill qualifies a user (in role FURNISHING or PAINT) to work on coaches of
--- a given category. Admin-maintained master, per the doc's User -> Role ->
--- Coach Type -> Skill hierarchy (scoped to Furnishing/Paint for this phase).
+-- A skill qualifies a user to perform a specific OPERATION (Furnishing Out,
+-- Paint In, ...) on coaches of a given category. Admin-maintained master, per
+-- the doc's User -> Role -> Coach Type -> Skill hierarchy. `operation` is the
+-- thing that's actually matched for assignment (see backend/lib/Assignment.php)
+-- — `role_code` is derived from it and kept alongside since it's what
+-- coach_assignments.module / the login role are keyed on. Paint In and Paint
+-- Out are both role PAINT but distinct operations, which is exactly why
+-- operation has to be its own column and not just inferred from role.
 CREATE TABLE skills (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
-  role_code VARCHAR(30) NOT NULL,        -- 'FURNISHING' or 'PAINT'
+  operation VARCHAR(30) NOT NULL,        -- 'FURNISHING_OUT', 'PAINT_IN', 'PAINT_OUT', 'ASSEMBLY_OP'
+  role_code VARCHAR(30) NOT NULL,        -- derived from operation: FURNISHING, PAINT, ASSEMBLY_PRODUCTION
   coach_category_id INT NOT NULL,
-  UNIQUE KEY uq_role_category (role_code, coach_category_id),
+  UNIQUE KEY uq_op_category_name (operation, coach_category_id, name),
   FOREIGN KEY (coach_category_id) REFERENCES coach_categories(id)
 );
 
@@ -222,4 +229,23 @@ CREATE TABLE coach_assignments (
   UNIQUE KEY uq_coach_module (coach_id, module),
   FOREIGN KEY (coach_id) REFERENCES coaches(id),
   FOREIGN KEY (assigned_user_id) REFERENCES users(id)
+);
+
+-- Forgot Password: a row per OTP request. The OTP itself is never stored in
+-- plaintext (bcrypt-hashed like login passwords). `reset_token` is only set
+-- once the OTP has been verified, and is the single-use credential the final
+-- "set new password" step actually trusts — this stops someone who captured
+-- the OTP screen/network call from replaying it after the password's already
+-- been changed, and keeps the OTP itself off the wire for that last step.
+CREATE TABLE password_resets (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  otp_hash VARCHAR(255) NOT NULL,
+  reset_token VARCHAR(64) NULL,
+  attempts INT NOT NULL DEFAULT 0,
+  expires_at DATETIME NOT NULL,
+  verified_at DATETIME NULL,
+  consumed_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id)
 );

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../lib/Assignment.php';
+require_once __DIR__ . '/../../lib/Operations.php';
 
 Auth::requireRole(['ADMIN']);
 
@@ -13,6 +14,7 @@ $body = requestBody();
 $employeeNo = trim($body['employee_no'] ?? '');
 $fullName = trim($body['full_name'] ?? '');
 $username = trim($body['username'] ?? '');
+$email = trim((string) ($body['email'] ?? ''));
 $password = (string) ($body['password'] ?? '');
 $roleId = (int) ($body['role_id'] ?? 0);
 $skillIds = array_map('intval', $body['skill_ids'] ?? []);
@@ -23,25 +25,35 @@ if ($employeeNo === '' || $fullName === '' || $username === '' || $password === 
 if (strlen($password) < 6) {
     Response::error('Password must be at least 6 characters.', 400);
 }
+if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    Response::error('Email address is not valid.', 400);
+}
 
 $pdo = Db::get();
 
-$stmt = $pdo->prepare('SELECT id FROM users WHERE username = :username OR employee_no = :employee_no');
-$stmt->execute(['username' => $username, 'employee_no' => $employeeNo]);
+$dupConditions = ['username = :username', 'employee_no = :employee_no'];
+$dupParams = ['username' => $username, 'employee_no' => $employeeNo];
+if ($email !== '') {
+    $dupConditions[] = 'email = :email';
+    $dupParams['email'] = $email;
+}
+$stmt = $pdo->prepare('SELECT id FROM users WHERE ' . implode(' OR ', $dupConditions));
+$stmt->execute($dupParams);
 if ($stmt->fetch()) {
-    Response::error('A user with this username or employee number already exists.', 409);
+    Response::error('A user with this username, employee number or email already exists.', 409);
 }
 
 $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare(
-        'INSERT INTO users (employee_no, full_name, username, password_hash, role_id)
-         VALUES (:employee_no, :full_name, :username, :password_hash, :role_id)'
+        'INSERT INTO users (employee_no, full_name, username, email, password_hash, role_id)
+         VALUES (:employee_no, :full_name, :username, :email, :password_hash, :role_id)'
     );
     $stmt->execute([
         'employee_no' => $employeeNo,
         'full_name' => $fullName,
         'username' => $username,
+        'email' => $email !== '' ? $email : null,
         'password_hash' => password_hash($password, PASSWORD_BCRYPT),
         'role_id' => $roleId,
     ]);
@@ -65,8 +77,13 @@ try {
     $pdo->commit();
 
     // A newly skilled employee may be able to pick up work sitting in the queue.
+    // Only modules with a live assignment queue (see Operations::MODULE_OPERATION)
+    // have anything to fill — e.g. ASSEMBLY_PRODUCTION skills can exist ahead of
+    // that module being built, with nothing to assign yet.
     foreach (array_keys($affectedModules) as $module) {
-        Assignment::fillCapacityForUser($pdo, $userId, $module);
+        if (isset(Operations::MODULE_OPERATION[$module])) {
+            Assignment::fillCapacityForUser($pdo, $userId, $module);
+        }
     }
 } catch (Throwable $e) {
     $pdo->rollBack();

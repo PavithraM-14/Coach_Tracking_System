@@ -7,6 +7,7 @@ import { ValidationMessage } from "../components/ui/ValidationMessage";
 
 export function ProfilePage() {
   const [profile, setProfile] = useState<MyProfile | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -17,6 +18,14 @@ export function ProfilePage() {
   useEffect(() => {
     getMyProfile().then(setProfile);
   }, []);
+
+  function resetForm() {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setError(null);
+    setSuccess(null);
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -65,50 +74,66 @@ export function ProfilePage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-6 max-w-xl rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h3 className="text-sm font-semibold text-slate-800">Change Password</h3>
+      <div className="mt-6 max-w-xl rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-800">Password</h3>
+          <button
+            type="button"
+            onClick={() => {
+              setShowForm((v) => !v);
+              resetForm();
+            }}
+            className="text-xs font-medium text-blue-600 hover:underline"
+          >
+            {showForm ? "Cancel" : "Change Password"}
+          </button>
+        </div>
 
-        <label className="mt-4 block text-sm font-medium text-slate-700">
-          Current Password
-          <input
-            type="password"
-            value={currentPassword}
-            onChange={(e) => setCurrentPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
+        {showForm && (
+          <form onSubmit={handleSubmit} className="mt-4">
+            <label className="block text-sm font-medium text-slate-700">
+              Current Password
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </label>
 
-        <label className="mt-4 block text-sm font-medium text-slate-700">
-          New Password
-          <input
-            type="password"
-            value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
+            <label className="mt-4 block text-sm font-medium text-slate-700">
+              New Password
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </label>
 
-        <label className="mt-4 block text-sm font-medium text-slate-700">
-          Confirm New Password
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-        </label>
+            <label className="mt-4 block text-sm font-medium text-slate-700">
+              Confirm New Password
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              />
+            </label>
 
-        {error && <ValidationMessage kind="error" message={error} />}
-        {success && <ValidationMessage kind="success" message={success} />}
+            {error && <ValidationMessage kind="error" message={error} />}
+            {success && <ValidationMessage kind="success" message={success} />}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {submitting ? "Updating..." : "Change Password"}
-        </button>
-      </form>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              {submitting ? "Updating..." : "Save New Password"}
+            </button>
+          </form>
+        )}
+      </div>
     </div>
   );
 }

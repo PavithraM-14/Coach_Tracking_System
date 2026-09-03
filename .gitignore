@@ -2,6 +2,7 @@ node_modules/
 frontend/dist/
 frontend/.env
 backend/config/.jwt_secret
+backend/config/.mail_credentials
 *.log
 
 # OS / editor cruft

@@ -4,6 +4,7 @@ import type {
   AdminLookups,
   AdminUserRow,
   DeleteUserResponse,
+  OperationCode,
   ProductionOrderCreateResponse,
   ProductionOrderRow,
   RoleOption,
@@ -22,6 +23,7 @@ export interface CreateUserInput {
   employee_no: string;
   full_name: string;
   username: string;
+  email?: string;
   password: string;
   role_id: number;
   skill_ids?: number[];
@@ -36,6 +38,19 @@ export function createUser(input: CreateUserInput): Promise<{ id: number }> {
 
 export function getSkills(): Promise<{ data: Skill[] }> {
   return apiRequest("/admin/skills_list.php");
+}
+
+export interface CreateSkillInput {
+  name: string;
+  operation: OperationCode;
+  coach_category_id: number;
+}
+
+export function createSkill(input: CreateSkillInput): Promise<{ id: number }> {
+  return apiRequest("/admin/skills_create.php", {
+    method: "POST",
+    body: input,
+  });
 }
 
 export function updateUserSkills(userId: number, skillIds: number[]): Promise<{ user_id: number }> {

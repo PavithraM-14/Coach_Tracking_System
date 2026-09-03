@@ -83,14 +83,17 @@ INSERT INTO coach_categories (id, code, name, sort_order, is_active) VALUES
 (2, '09', 'LHB NON-AC', 9, 1);
 
 -- ===================== Skills =====================
--- One skill per (role, coach category) combination for Furnishing and Paint —
--- the two modules the skill-based assignment queue covers this phase.
+-- Skill = "can perform this OPERATION on this coach category". Only
+-- FURNISHING_OUT and PAINT_IN are live operations this phase (the ones the
+-- assignment queue actually assigns work for) — PAINT_OUT and ASSEMBLY_OP
+-- skills can be created via Admin's Skill Master ahead of those modules
+-- being built, they just won't have anything assigning against them yet.
 
-INSERT INTO skills (id, name, role_code, coach_category_id) VALUES
-(1, 'LHB AC Furnishing', 'FURNISHING', 1),
-(2, 'LHB Non-AC Furnishing', 'FURNISHING', 2),
-(3, 'LHB AC Painting', 'PAINT', 1),
-(4, 'LHB Non-AC Painting', 'PAINT', 2);
+INSERT INTO skills (id, name, operation, role_code, coach_category_id) VALUES
+(1, 'Furnishing Out - LHB AC', 'FURNISHING_OUT', 'FURNISHING', 1),
+(2, 'Furnishing Out - LHB Non-AC', 'FURNISHING_OUT', 'FURNISHING', 2),
+(3, 'Paint In - LHB AC', 'PAINT_IN', 'PAINT', 1),
+(4, 'Paint In - LHB Non-AC', 'PAINT_IN', 'PAINT', 2);
 
 -- ===================== User skills =====================
 -- furnish1/paint1 cover both categories; furnish2/paint2 cover only LHB AC —

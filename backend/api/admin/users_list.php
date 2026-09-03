@@ -6,7 +6,7 @@ Auth::requireRole(['ADMIN']);
 
 $pdo = Db::get();
 $rows = $pdo->query(
-    'SELECT u.id, u.employee_no, u.full_name, u.username, u.is_active, u.created_at, r.code AS role
+    'SELECT u.id, u.employee_no, u.full_name, u.username, u.email, u.is_active, u.created_at, r.code AS role
      FROM users u
      JOIN roles r ON r.id = u.role_id
      ORDER BY u.created_at DESC'
@@ -29,6 +29,7 @@ $data = array_map(function ($row) use ($skillsByUser) {
         'employee_no' => $row['employee_no'],
         'full_name' => $row['full_name'],
         'username' => $row['username'],
+        'email' => $row['email'],
         'role' => $row['role'],
         'is_active' => (bool) $row['is_active'],
         'created_at' => $row['created_at'],

@@ -1,11 +1,184 @@
 import { Fragment, useEffect, useState, type FormEvent } from "react";
-import { createUser, deleteUser, getRoles, getUsers, getSkills, updateUserSkills } from "../api/admin";
-import type { AdminUserRow, RoleOption, Skill } from "../types";
+import {
+  createUser,
+  deleteUser,
+  getRoles,
+  getUsers,
+  getSkills,
+  updateUserSkills,
+  createSkill,
+  getAdminLookups,
+} from "../api/admin";
+import type { AdminLookups, AdminUserRow, OperationCode, RoleOption, Skill } from "../types";
 import { ApiError } from "../api/client";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { useAuth } from "../context/AuthContext";
 
-const SKILL_ROLE_CODES = ["FURNISHING", "PAINT"];
+const SKILL_ROLE_CODES = ["FURNISHING", "PAINT", "ASSEMBLY_PRODUCTION"] as const;
+
+// Mirrors backend/lib/Operations.php — a skill is "can perform this operation
+// on this coach category", not just a role/category tag. Paint In and Paint
+// Out are both PAINT role but distinct operations, which is exactly why this
+// has to be its own dimension.
+const OPERATIONS: Array<{ code: OperationCode; label: string; live: boolean }> = [
+  { code: "FURNISHING_OUT", label: "Furnishing Out", live: true },
+  { code: "PAINT_IN", label: "Paint In", live: true },
+  { code: "PAINT_OUT", label: "Paint Out", live: false },
+  { code: "ASSEMBLY_OP", label: "Assembly Operation", live: false },
+];
+
+function operationLabel(code: OperationCode): string {
+  return OPERATIONS.find((o) => o.code === code)?.label ?? code;
+}
+
+function SkillMasterSection({ skills, onSkillsChanged }: { skills: Skill[]; onSkillsChanged: () => void }) {
+  const [lookups, setLookups] = useState<AdminLookups | null>(null);
+  const [name, setName] = useState("");
+  const [operation, setOperation] = useState<OperationCode | "">("");
+  const [coachCategoryId, setCoachCategoryId] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    getAdminLookups().then(setLookups);
+  }, []);
+
+  function updateNameSuggestion(nextOperation: OperationCode | "", nextCategoryId: string) {
+    const categoryName = lookups?.coach_categories.find((c) => String(c.id) === nextCategoryId)?.name;
+    if (nextOperation && categoryName) {
+      setName(`${operationLabel(nextOperation)} - ${categoryName}`);
+    }
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (!name.trim() || !operation || !coachCategoryId) {
+      setError("Name, operation and coach category are all required.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createSkill({ name: name.trim(), operation, coach_category_id: Number(coachCategoryId) });
+      setSuccess(`Skill "${name.trim()}" added.`);
+      setName("");
+      setOperation("");
+      setCoachCategoryId("");
+      onSkillsChanged();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to create skill.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const skillsByOperation = OPERATIONS.map((op) => ({
+    ...op,
+    skills: skills.filter((s) => s.operation === op.code),
+  }));
+
+  return (
+    <div className="mt-4 max-w-2xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-800">Skill Master</h3>
+      <p className="mt-1 text-xs text-slate-500">
+        A skill is the ability to perform a specific operation on a coach category — the
+        auto-assignment queue matches employees to work by operation, e.g. Paint In and Paint Out
+        are tracked as separate skills even though both are the Paint role.
+      </p>
+
+      <form onSubmit={handleSubmit} className="mt-3 grid grid-cols-3 gap-2">
+        <select
+          value={operation}
+          onChange={(e) => {
+            const next = e.target.value as OperationCode | "";
+            setOperation(next);
+            updateNameSuggestion(next, coachCategoryId);
+          }}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        >
+          <option value="">Operation</option>
+          {OPERATIONS.map((op) => (
+            <option key={op.code} value={op.code}>
+              {op.label}
+              {!op.live ? " (not live yet)" : ""}
+            </option>
+          ))}
+        </select>
+        <select
+          value={coachCategoryId}
+          onChange={(e) => {
+            setCoachCategoryId(e.target.value);
+            updateNameSuggestion(operation, e.target.value);
+          }}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        >
+          <option value="">Coach category</option>
+          {lookups?.coach_categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <input
+          placeholder="Skill name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
+
+        {operation && !OPERATIONS.find((o) => o.code === operation)?.live && (
+          <p className="col-span-3 -mt-1 text-xs text-amber-600">
+            This operation doesn't have a working page yet — the skill can be created and assigned
+            now, but nothing will auto-assign against it until that module is built.
+          </p>
+        )}
+
+        {error && (
+          <div className="col-span-3">
+            <ValidationMessage kind="error" message={error} />
+          </div>
+        )}
+        {success && (
+          <div className="col-span-3">
+            <ValidationMessage kind="success" message={success} />
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={submitting}
+          className="col-span-3 rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:opacity-50"
+        >
+          {submitting ? "Adding..." : "Add Skill"}
+        </button>
+      </form>
+
+      <div className="mt-4 space-y-2">
+        {skillsByOperation
+          .filter((op) => op.skills.length > 0)
+          .map((op) => (
+            <div key={op.code}>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                {op.label}
+                {!op.live && " (not live yet)"}
+              </p>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {op.skills.map((s) => (
+                  <span key={s.id} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600">
+                    {s.name} <span className="text-slate-400">· {s.coach_category_name}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
 
 function SkillEditor({ user, skills, onSaved }: { user: AdminUserRow; skills: Skill[]; onSaved: () => void }) {
   const [selected, setSelected] = useState<number[]>(user.skills.map((s) => s.id));
@@ -53,7 +226,14 @@ export function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUserRow[] | null>(null);
   const [roles, setRoles] = useState<RoleOption[] | null>(null);
   const [skills, setSkills] = useState<Skill[] | null>(null);
-  const [form, setForm] = useState({ employee_no: "", full_name: "", username: "", password: "", role_id: "" });
+  const [form, setForm] = useState({
+    employee_no: "",
+    full_name: "",
+    username: "",
+    email: "",
+    password: "",
+    role_id: "",
+  });
   const [newUserSkillIds, setNewUserSkillIds] = useState<number[]>([]);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
@@ -93,12 +273,13 @@ export function AdminUsersPage() {
         employee_no: form.employee_no,
         full_name: form.full_name,
         username: form.username,
+        email: form.email.trim() || undefined,
         password: form.password,
         role_id: Number(form.role_id),
         skill_ids: newUserSkillIds,
       });
       setSuccess(`User "${form.username}" created.`);
-      setForm({ employee_no: "", full_name: "", username: "", password: "", role_id: "" });
+      setForm({ employee_no: "", full_name: "", username: "", email: "", password: "", role_id: "" });
       setNewUserSkillIds([]);
       reload();
     } catch (err) {
@@ -152,6 +333,13 @@ export function AdminUsersPage() {
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
         <input
+          placeholder="Email (for password reset)"
+          type="email"
+          value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
+        <input
           placeholder="Password"
           type="password"
           value={form.password}
@@ -173,35 +361,66 @@ export function AdminUsersPage() {
             </option>
           ))}
         </select>
-        {selectedRoleCode && !SKILL_ROLE_CODES.includes(selectedRoleCode) && (
-          <p className="col-span-2 -mt-1 text-xs text-slate-400">
-            Skills only apply to Furnishing and Paint roles — nothing to configure for this role.
-          </p>
-        )}
-
-        {selectedRoleCode && SKILL_ROLE_CODES.includes(selectedRoleCode) && (
-          <div className="col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
-              Skills (which coach categories can this employee work on)
-            </p>
-            <div className="mt-2 flex flex-wrap gap-3">
-              {skillsForSelectedRole.map((skill) => (
-                <label key={skill.id} className="flex items-center gap-1.5 text-xs text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={newUserSkillIds.includes(skill.id)}
-                    onChange={() =>
-                      setNewUserSkillIds((prev) =>
-                        prev.includes(skill.id) ? prev.filter((id) => id !== skill.id) : [...prev, skill.id],
-                      )
-                    }
-                  />
+        <div className="col-span-2">
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Skills</label>
+          <select
+            value=""
+            disabled={
+              !selectedRoleCode ||
+              !SKILL_ROLE_CODES.includes(selectedRoleCode) ||
+              skillsForSelectedRole.filter((s) => !newUserSkillIds.includes(s.id)).length === 0
+            }
+            onChange={(e) => {
+              const id = Number(e.target.value);
+              if (id) {
+                setNewUserSkillIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
+              }
+            }}
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            <option value="">
+              {!selectedRoleCode
+                ? "Select a role first"
+                : !SKILL_ROLE_CODES.includes(selectedRoleCode)
+                  ? "No skills apply to this role"
+                  : skillsForSelectedRole.filter((s) => !newUserSkillIds.includes(s.id)).length === 0
+                    ? "All available skills added"
+                    : "Add a skill..."}
+            </option>
+            {skillsForSelectedRole
+              .filter((s) => !newUserSkillIds.includes(s.id))
+              .map((skill) => (
+                <option key={skill.id} value={skill.id}>
                   {skill.name}
-                </label>
+                </option>
               ))}
+          </select>
+
+          {newUserSkillIds.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {newUserSkillIds.map((id) => {
+                const skill = skills?.find((s) => s.id === id);
+                if (!skill) return null;
+                return (
+                  <span
+                    key={id}
+                    className="flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-xs text-slate-600"
+                  >
+                    {skill.name}
+                    <button
+                      type="button"
+                      onClick={() => setNewUserSkillIds((prev) => prev.filter((x) => x !== id))}
+                      className="text-slate-400 hover:text-slate-700"
+                      aria-label={`Remove ${skill.name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
+                );
+              })}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {error && (
           <div className="col-span-2">
@@ -223,6 +442,8 @@ export function AdminUsersPage() {
         </button>
       </form>
 
+      {skills && <SkillMasterSection skills={skills} onSkillsChanged={reload} />}
+
       {users && (
         <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
           <table className="w-full text-left text-sm">
@@ -231,6 +452,7 @@ export function AdminUsersPage() {
                 <th className="px-4 py-2">Employee No.</th>
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Username</th>
+                <th className="px-4 py-2">Email</th>
                 <th className="px-4 py-2">Role</th>
                 <th className="px-4 py-2">Skills</th>
                 <th className="px-4 py-2">Active</th>
@@ -244,6 +466,7 @@ export function AdminUsersPage() {
                     <td className="px-4 py-2">{u.employee_no}</td>
                     <td className="px-4 py-2">{u.full_name}</td>
                     <td className="px-4 py-2">{u.username}</td>
+                    <td className="px-4 py-2">{u.email ?? "—"}</td>
                     <td className="px-4 py-2">{u.role}</td>
                     <td className="px-4 py-2">
                       {u.skills.length > 0 ? u.skills.map((s) => s.name).join(", ") : "—"}
@@ -294,7 +517,7 @@ export function AdminUsersPage() {
                   </tr>
                   {editingUserId === u.id && skills && (
                     <tr>
-                      <td colSpan={7} className="px-4 pb-3">
+                      <td colSpan={8} className="px-4 pb-3">
                         <SkillEditor
                           user={u}
                           skills={skills}

@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../lib/Assignment.php';
+require_once __DIR__ . '/../../lib/Operations.php';
 
 Auth::requireRole(['ADMIN']);
 
@@ -47,7 +48,9 @@ try {
     $pdo->commit();
 
     foreach (array_keys($affectedModules) as $module) {
-        Assignment::fillCapacityForUser($pdo, $userId, $module);
+        if (isset(Operations::MODULE_OPERATION[$module])) {
+            Assignment::fillCapacityForUser($pdo, $userId, $module);
+        }
     }
 } catch (Throwable $e) {
     $pdo->rollBack();

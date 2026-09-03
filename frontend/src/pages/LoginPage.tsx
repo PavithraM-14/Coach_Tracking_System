@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Link, Navigate, useNavigate } from "react-router-dom";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { ApiError } from "../api/client";
@@ -77,6 +77,12 @@ export function LoginPage() {
             </button>
           </div>
         </label>
+
+        <p className="mt-2 text-right text-sm">
+          <Link to="/forgot-password" className="font-medium text-blue-600 hover:underline">
+            Forgot password?
+          </Link>
+        </p>
 
         {error && <ValidationMessage kind="error" message={error} />}
 

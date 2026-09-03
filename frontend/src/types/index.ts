@@ -31,15 +31,19 @@ export interface AdminUserRow {
   employee_no: string;
   full_name: string;
   username: string;
+  email: string | null;
   role: RoleCode;
   is_active: boolean;
   created_at: string;
   skills: Array<{ id: number; name: string }>;
 }
 
+export type OperationCode = "FURNISHING_OUT" | "PAINT_IN" | "PAINT_OUT" | "ASSEMBLY_OP";
+
 export interface Skill {
   id: number;
   name: string;
+  operation: OperationCode;
   role_code: RoleCode;
   coach_category_id: number;
   coach_category_name: string;
@@ -160,6 +164,7 @@ export interface AdminLookups {
   plants: Array<{ id: number; code: string; name: string }>;
   production_years: Array<{ id: number; year_code: string }>;
   coach_types: Array<{ id: number; code: string; name: string; category_name: string }>;
+  coach_categories: Array<{ id: number; code: string; name: string }>;
 }
 
 export interface ProductionOrderRow {

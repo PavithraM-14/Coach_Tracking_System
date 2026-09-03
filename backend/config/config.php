@@ -35,6 +35,35 @@ if (!function_exists('cts_jwt_secret')) {
     }
 }
 
+// SMTP credentials for Forgot Password OTP emails. Honors CTS_MAIL_* env vars
+// for a real deployment; otherwise reads the git-ignored .mail_credentials
+// JSON file (never hardcoded/committed — same reasoning as the JWT secret).
+if (!function_exists('cts_mail_config')) {
+    function cts_mail_config(): array
+    {
+        $envHost = getenv('CTS_MAIL_HOST');
+        if ($envHost) {
+            return [
+                'host' => $envHost,
+                'port' => (int) (getenv('CTS_MAIL_PORT') ?: 587),
+                'username' => getenv('CTS_MAIL_USER') ?: '',
+                'password' => getenv('CTS_MAIL_PASS') ?: '',
+                'from_name' => getenv('CTS_MAIL_FROM_NAME') ?: 'CTS - Coach Tracking System',
+            ];
+        }
+
+        $credFile = __DIR__ . '/.mail_credentials';
+        if (is_readable($credFile)) {
+            $decoded = json_decode((string) file_get_contents($credFile), true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+        }
+
+        return ['host' => '', 'port' => 587, 'username' => '', 'password' => '', 'from_name' => 'CTS'];
+    }
+}
+
 return [
     'db' => [
         'host' => getenv('CTS_DB_HOST') ?: '127.0.0.1',
@@ -49,4 +78,5 @@ return [
     'cors' => [
         'allowed_origin' => getenv('CTS_CORS_ORIGIN') ?: 'http://localhost:5173',
     ],
+    'mail' => cts_mail_config(),
 ];

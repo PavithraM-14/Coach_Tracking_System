@@ -59,6 +59,9 @@ the password `Passw0rd!`.
 Roles without a page yet can log in (so accounts exist ahead of their
 modules), but have nothing role-specific to do until those modules are built.
 
+`admin1` has `email` set (an inbox we control) so the Forgot Password flow has
+something to test end-to-end; every other demo account has no email on file.
+
 ## Role scoping (strict)
 
 Each role's sidebar shows only its own modules — nothing is shared by
@@ -86,11 +89,12 @@ overflow-hidden`, only `<main>` scrolls (`overflow-y-auto`) — the sidebar and
 header never move, at any scroll position. The sidebar has a hamburger toggle
 (top-left of the header) that hides/shows it entirely (`w-60` ↔ `w-0`
 transition) — the toggle stays in the header so it's reachable either way.
-Sidebar branding: "INDIAN RAILWAYS" caption + a larger "CTS" wordmark at top;
-**My Profile** (view own details + change password) and **Log out** are
-always present regardless of role — Profile at the top nav (next to
-Dashboard), Log out pinned to the bottom of the sidebar under the current
-user's name.
+Sidebar branding: "INDIAN RAILWAYS" caption + a larger "CTS" wordmark at top.
+**My Profile** and **Log out** are always present regardless of role — Profile
+sits at the *bottom* of the module list (after the role-specific items, with
+a small round avatar icon next to it) and Log out is pinned to the very
+bottom of the sidebar on its own, with no name/role text above it (removed —
+that info is already in the header).
 
 **Line Management** (`/line-management`, renamed from "Paint In") now shows
 **10 lines × 10 slots = 100 total capacity** (was 4 lines), with a 3-state
@@ -157,9 +161,25 @@ to the two modules where it matters right now:
 
 `/profile` — available to every role via the sidebar, not gated by
 `NAV_ITEMS`. Shows the user's own employee no./username/role/skills
-(`GET /api/profile/me.php`) and a change-password form
-(`POST /api/profile/change-password.php`, requires the current password,
-verified with `password_verify` before the new one is hashed and stored).
+(`GET /api/profile/me.php`). The password form is collapsed by default behind
+a "Change Password" toggle — only current-password/new/confirm fields appear
+once clicked (`POST /api/profile/change-password.php`, requires the current
+password, verified with `password_verify` before the new one is hashed and
+stored).
+
+## Skill master (Admin)
+
+The doc's Admin responsibility is "create/maintain skill master **and**
+assign skills to users" — we'd only built the second half. `admin/users.php`
+now has a **Skill Master** section (`POST /api/admin/skills_create.php`):
+name + role (Furnishing/Paint) + coach category, backed by the `skills`
+table. This meant relaxing `skills`' unique constraint from
+`(role_code, coach_category_id)` to `(role_code, coach_category_id, name)` —
+multiple distinct skills can now cover the same role+category (e.g. two
+different Furnishing skills both scoped to LHB AC); the assignment-queue
+matching in `Assignment.php` already worked as a plain JOIN with no
+uniqueness assumption, so this needed no engine changes. `admin/lookups.php`
+now also returns `coach_categories` for the picker.
 
 ## Admin: delete user
 
@@ -174,6 +194,36 @@ recorded history is actually `DELETE`d. Admin cannot delete their own
 account (checked server-side). Verified both paths: a fresh no-history user
 was hard-deleted; a user with a Shell Outturn on record was deactivated
 instead, with the explanatory message surfaced in the UI.
+
+## Forgot Password (OTP via email)
+
+Login page has a "Forgot password?" link → `/forgot-password`, a 3-step flow:
+email → 6-digit OTP → new password + confirm → success → back to Sign In.
+
+- `users.email` (nullable, unique) is the registered address OTPs go to.
+  Admin's Create User form has an optional Email field for this; existing
+  users without one just can't use the flow yet.
+- `password_resets` tracks one row per OTP request: `otp_hash` (bcrypt, never
+  stored in plaintext), `expires_at` (10 min), `attempts` (capped at 5), and
+  `reset_token` — only set once the OTP is verified, and the only credential
+  the final "set new password" step actually trusts. That split means a
+  captured OTP screen/network call can't be replayed after the password's
+  already changed, and the OTP itself never has to cross the wire again for
+  the reset step.
+- `forgot_password_request.php` always returns the same generic message
+  whether or not the email is registered (no user enumeration), and rate-limits
+  to one request per user per 60 seconds.
+- **Email delivery**: `backend/lib/Mailer.php` is a ~90-line hand-rolled
+  SMTP-over-STARTTLS client (no Composer/PHPMailer available on this machine)
+  — EHLO, STARTTLS, AUTH LOGIN, one message, talking directly to
+  `smtp.gmail.com:587`. Credentials live in `backend/config/.mail_credentials`
+  (git-ignored JSON: host/port/username/password/from_name), read via
+  `cts_mail_config()` in `config.php` — same pattern as the JWT secret file.
+  Set `CTS_MAIL_HOST`/`CTS_MAIL_PORT`/`CTS_MAIL_USER`/`CTS_MAIL_PASS` as real
+  env vars for an actual deployment instead. The sending Gmail account is
+  independent of who receives the OTP — it can email any address stored in
+  `users.email`, not just its own inbox (verified by sending to itself since
+  that's an inbox we could actually check during testing).
 
 ## Security hardening
 

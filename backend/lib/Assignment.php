@@ -1,10 +1,15 @@
 <?php
 
+require_once __DIR__ . '/Operations.php';
+
 // Skill-based coach assignment engine for the FURNISHING and PAINT modules.
 // A "module" here means "who is responsible for the next action on this
 // coach": FURNISHING = who should record Furnishing Out; PAINT = who should
-// record Paint In. Max 5 concurrently ASSIGNED coaches per employee; beyond
-// that a coach sits QUEUED until the employee completes one of theirs.
+// record Paint In. Matching is on the specific OPERATION each module assigns
+// (see Operations::MODULE_OPERATION), not just role — Paint In and Paint Out
+// are both role PAINT, so a skill for one must never qualify someone for the
+// other. Max 5 concurrently ASSIGNED coaches per employee; beyond that a
+// coach sits QUEUED until the employee completes one of theirs.
 class Assignment
 {
     const MAX_CONCURRENT = 5;
@@ -17,6 +22,7 @@ class Assignment
     public static function assignOrQueue(PDO $pdo, int $coachId, string $module): void
     {
         $coachCategoryId = self::coachCategoryId($pdo, $coachId);
+        $operation = Operations::MODULE_OPERATION[$module];
 
         $stmt = $pdo->prepare(
             "SELECT u.id,
@@ -27,7 +33,7 @@ class Assignment
              JOIN user_skills us ON us.user_id = u.id
              JOIN skills s ON s.id = us.skill_id
              WHERE r.code = :role_code AND u.is_active = 1
-               AND s.role_code = :module_where AND s.coach_category_id = :coach_category_id
+               AND s.operation = :operation AND s.coach_category_id = :coach_category_id
              GROUP BY u.id
              HAVING load_count < :max_concurrent
              ORDER BY load_count ASC, u.id ASC
@@ -36,7 +42,7 @@ class Assignment
         $stmt->execute([
             'module_sub' => $module,
             'role_code' => $module,
-            'module_where' => $module,
+            'operation' => $operation,
             'coach_category_id' => $coachCategoryId,
             'max_concurrent' => self::MAX_CONCURRENT,
         ]);
@@ -99,6 +105,8 @@ class Assignment
      */
     public static function fillCapacityForUser(PDO $pdo, int $userId, string $module): void
     {
+        $operation = Operations::MODULE_OPERATION[$module];
+
         while (true) {
             $loadStmt = $pdo->prepare(
                 "SELECT COUNT(*) FROM coach_assignments WHERE assigned_user_id = :user_id AND module = :module AND status = 'ASSIGNED'"
@@ -114,12 +122,12 @@ class Assignment
                  JOIN coaches c ON c.id = ca.coach_id
                  JOIN coach_types ct ON ct.id = c.coach_type_id
                  JOIN user_skills us ON us.user_id = :user_id
-                 JOIN skills s ON s.id = us.skill_id AND s.role_code = :module AND s.coach_category_id = ct.category_id
+                 JOIN skills s ON s.id = us.skill_id AND s.operation = :operation AND s.coach_category_id = ct.category_id
                  WHERE ca.module = :module2 AND ca.status = 'QUEUED'
                  ORDER BY ca.created_at ASC
                  LIMIT 1"
             );
-            $nextStmt->execute(['user_id' => $userId, 'module' => $module, 'module2' => $module]);
+            $nextStmt->execute(['user_id' => $userId, 'operation' => $operation, 'module2' => $module]);
             $next = $nextStmt->fetch();
             if (!$next) {
                 return;
