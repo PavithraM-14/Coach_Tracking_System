@@ -1,0 +1,9 @@
+node_modules/
+frontend/dist/
+frontend/.env
+backend/config/.jwt_secret
+*.log
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
