@@ -57,7 +57,13 @@ INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id)
 (15, 'E1015', 'V. Raja',        'paint2',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
 -- Assembly, same split as Paint: separate logins per direction — assemble1
 -- only handles Assembly In, assemble2 only handles Assembly Out.
-(16, 'E1016', 'S. Karthikeyan', 'assemble2',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6);
+(16, 'E1016', 'S. Karthikeyan', 'assemble2',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+-- Outturn/Dispatch, same split again: one login per stage — dispatch1 =
+-- Local Outturn, dispatch2 = Lock & Seal, dispatch3 = Railway Board
+-- Outturn, dispatch4 = Physical Dispatch.
+(17, 'E1017', 'M. Rajesh',      'dispatch2',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12),
+(18, 'E1018', 'A. Saravanan',   'dispatch3',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12),
+(19, 'E1019', 'R. Elumalai',    'dispatch4',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12);
 
 -- ===================== Plants =====================
 -- Matches the legacy BO reference's leading token (e.g. "FURN | 2025 | ...").
@@ -113,12 +119,10 @@ INSERT INTO skills (id, name, operation, role_code, coach_category_id) VALUES
 
 -- ===================== User skills =====================
 -- furnish1 covers both categories — every coach past Shell Outturn is
--- assigned to them, uncapped (see Assignment::MODULE_CAPACITY). Assembly is
--- split like Paint: assemble1 = Assembly In only, assemble2 = Assembly Out
--- only, each across both categories — capped at 5 concurrent like Paint, so
--- coaches queue once one of them has 5 ASSIGNED. dispatch1 covers all four
--- Outturn/Dispatch operations (the only seeded login for that role),
--- uncapped like Furnishing — no lines/capacity concept for these stages.
+-- assigned to them, uncapped (see Assignment::MODULE_CAPACITY). Assembly and
+-- Outturn/Dispatch both use the same split as Paint — one login per
+-- direction/stage, each across both categories, uncapped (Furnishing-style,
+-- no lines/capacity concept for these stages, unlike Paint/Assembly).
 
 INSERT INTO user_skills (user_id, skill_id) VALUES
 (4, 1),  -- furnish1: LHB AC Furnishing
@@ -128,9 +132,9 @@ INSERT INTO user_skills (user_id, skill_id) VALUES
 (16, 5), -- assemble2: LHB AC Assembly Out
 (16, 6), -- assemble2: LHB Non-AC Assembly Out
 (12, 7), (12, 8),   -- dispatch1: Local Outturn (both categories)
-(12, 9), (12, 10),  -- dispatch1: Lock & Seal (both categories)
-(12, 11), (12, 12), -- dispatch1: Railway Board Outturn (both categories)
-(12, 13), (12, 14); -- dispatch1: Physical Dispatch (both categories)
+(17, 9), (17, 10),  -- dispatch2: Lock & Seal (both categories)
+(18, 11), (18, 12), -- dispatch3: Railway Board Outturn (both categories)
+(19, 13), (19, 14); -- dispatch4: Physical Dispatch (both categories)
 
 -- ===================== Coach types =====================
 -- Codes/names match the legacy tbl_coach_types active rows for these categories.

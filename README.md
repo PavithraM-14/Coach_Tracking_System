@@ -38,8 +38,9 @@ React + PHP + MySQL, seeded from cleaned legacy reference data. See
 ## Demo accounts
 
 Every role from the functional doc has its own login (13 total), plus one
-extra Paint login and one extra Assembly Production login (15 total) — one
-per pipeline direction, per role. All share the password `Passw0rd!`.
+extra Paint login, one extra Assembly Production login, and three extra
+Outturn/Dispatch logins (18 total) — one per pipeline direction/stage, per
+role. All share the password `Passw0rd!`.
 
 | Username    | Role                          | Has working pages this phase? |
 |-------------|-------------------------------|--------------------------------|
@@ -56,7 +57,10 @@ per pipeline direction, per role. All share the password `Passw0rd!`.
 | shunt1      | SHUNTING_STAFF                | Login only |
 | vendor1     | VENDOR_SNI                    | Login only |
 | finalinsp1  | FINAL_INSPECTION              | Login only |
-| dispatch1   | OUTTURN_DISPATCH              | Yes — Local Outturn, Lock & Seal, Railway Board Outturn, Physical Dispatch (all four; skills: LHB AC + Non-AC per operation) — the only seeded Outturn/Dispatch login, uncapped like Furnishing |
+| dispatch1   | OUTTURN_DISPATCH              | Yes — Local Outturn only (`/local-outturn`; skills: LHB AC + Non-AC Local Outturn) |
+| dispatch2   | OUTTURN_DISPATCH              | Yes — Lock & Seal only (`/lock-seal`; skills: LHB AC + Non-AC Lock & Seal) |
+| dispatch3   | OUTTURN_DISPATCH              | Yes — Railway Board Outturn only (`/board-outturn`; skills: LHB AC + Non-AC Board Outturn) |
+| dispatch4   | OUTTURN_DISPATCH              | Yes — Physical Dispatch only (`/physical-dispatch`; skills: LHB AC + Non-AC Physical Dispatch) |
 | viewer1     | MANAGEMENT_VIEWER             | Login only |
 
 Roles without a page yet can log in (so accounts exist ahead of their
@@ -206,12 +210,11 @@ no new matching logic needed, only new table entries. Four new tables
 `physical_dispatch_records`), each FK-chained to the one before it the same
 way `furnishing_in_records` FKs to `shell_outturn_transactions`.
 
-Demo config: **dispatch1** holds all four operations (both coach
-categories) — the only seeded Outturn/Dispatch login, same reasoning as
-furnish1 (a single generic worker covering everything, since there's no
-"separate login per direction" request for this role the way there was for
-Paint/Assembly). Verified live end-to-end: a coach walked through all ten
-stages, Shell Outturn through Physical Dispatch, with the Admin coach
+Demo config: same one-login-per-stage split as Paint/Assembly —
+**dispatch1 = Local Outturn**, **dispatch2 = Lock & Seal**, **dispatch3 =
+Railway Board Outturn**, **dispatch4 = Physical Dispatch**, each across
+both coach categories. Verified live end-to-end: a coach walked through all
+ten stages, Shell Outturn through Physical Dispatch, with the Admin coach
 detail drill-down (`/admin/coaches/:id`) correctly showing all ten in its
 workflow stepper and history, remarks included.
 
