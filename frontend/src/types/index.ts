@@ -341,6 +341,13 @@ export interface AdminDashboardStats {
   awaiting_assembly_in: number;
   awaiting_assembly_out: number;
   queued_for_assignment: number;
+  total_coaches: number;
+  total_shell_outturn: number;
+  total_furnishing_in: number;
+  total_paint_in: number;
+  total_paint_out: number;
+  total_assembly_in: number;
+  total_assembly_out: number;
 }
 
 export interface DeleteUserResponse {

@@ -25,7 +25,7 @@ import { getAssemblyOutList, getAssemblyOutWorklist, getAssemblyOutLines } from 
 import { getUsers, getProductionOrders, getAdminDashboardStats } from "../api/admin";
 import { getRecentActivity } from "../api/dashboard";
 import { getMyAssignmentSummary } from "../api/assignments";
-import type { AssignmentSummary, RecentActivityRow } from "../types";
+import type { AdminDashboardStats, AssignmentSummary, RecentActivityRow } from "../types";
 import { formatDateTime } from "../utils/dateFormat";
 
 interface StatCardProps {
@@ -48,12 +48,12 @@ const COLOR_CLASSES: Record<StatCardProps["color"], string> = {
 
 function StatCard({ icon: Icon, color, label, value, description, to, actionLabel }: StatCardProps) {
   const content = (
-    <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${COLOR_CLASSES[color]}`}>
-        <Icon size={20} />
+    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${COLOR_CLASSES[color]}`}>
+        <Icon size={16} />
       </div>
-      <p className="mt-3 text-sm font-medium text-slate-600">{label}</p>
-      <p className="mt-1 text-3xl font-bold text-slate-900">{value}</p>
+      <p className="mt-2.5 text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
       <p className="mt-1 text-xs text-slate-400">{description}</p>
       {to && <p className="mt-auto pt-2 text-xs font-medium text-blue-600">{actionLabel ?? "Click to view →"}</p>}
     </div>
@@ -69,51 +69,87 @@ function StatCard({ icon: Icon, color, label, value, description, to, actionLabe
 }
 
 function StatGrid({ children }: { children: ReactNode }) {
-  return <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">{children}</div>;
+  return <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">{children}</div>;
+}
+
+// Compact stage-wise WIP card for Admin's pipeline board — pairs a stage's
+// completed-so-far total with how many coaches are sitting there waiting on
+// the next stage. Mirrors the legacy dashboard's per-stage holdings, using
+// our own real counts instead of its undocumented formulas.
+function PipelineStageCard({
+  label,
+  done,
+  waiting,
+  waitingLabel,
+  to,
+}: {
+  label: string;
+  done: number | string;
+  waiting: number | string;
+  waitingLabel: string;
+  to?: string;
+}) {
+  const content = (
+    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
+      <div className="mt-2 flex items-end gap-5">
+        <div>
+          <p className="text-xl font-bold text-slate-900">{done}</p>
+          <p className="text-[11px] text-slate-400">Completed</p>
+        </div>
+        <div>
+          <p className="text-xl font-bold text-amber-600">{waiting}</p>
+          <p className="text-[11px] text-slate-400">{waitingLabel}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  return to ? (
+    <Link to={to} className="block hover:opacity-90">
+      {content}
+    </Link>
+  ) : (
+    content
+  );
+}
+
+function PipelineGrid({ children }: { children: ReactNode }) {
+  return <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">{children}</div>;
 }
 
 function AdminStats() {
   const [userCount, setUserCount] = useState<number | null>(null);
   const [boCount, setBoCount] = useState<number | null>(null);
-  const [coachCount, setCoachCount] = useState<number | null>(null);
-  const [pendingShell, setPendingShell] = useState<number | null>(null);
-  const [awaitingFurnIn, setAwaitingFurnIn] = useState<number | null>(null);
-  const [awaitingPaint, setAwaitingPaint] = useState<number | null>(null);
-  const [awaitingPaintOut, setAwaitingPaintOut] = useState<number | null>(null);
-  const [awaitingAssemblyIn, setAwaitingAssemblyIn] = useState<number | null>(null);
-  const [awaitingAssemblyOut, setAwaitingAssemblyOut] = useState<number | null>(null);
-  const [queued, setQueued] = useState<number | null>(null);
+  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
 
   useEffect(() => {
     getUsers().then((res) => setUserCount(res.data.length));
-    getProductionOrders().then((res) => {
-      setBoCount(res.data.length);
-      setCoachCount(res.data.reduce((sum, o) => sum + o.coach_count, 0));
-    });
-    getAdminDashboardStats().then((stats) => {
-      setPendingShell(stats.pending_shell_outturn);
-      setAwaitingFurnIn(stats.awaiting_furnishing_in);
-      setAwaitingPaint(stats.awaiting_paint_in);
-      setAwaitingPaintOut(stats.awaiting_paint_out);
-      setAwaitingAssemblyIn(stats.awaiting_assembly_in);
-      setAwaitingAssemblyOut(stats.awaiting_assembly_out);
-      setQueued(stats.queued_for_assignment);
-    });
+    getProductionOrders().then((res) => setBoCount(res.data.length));
+    getAdminDashboardStats().then(setStats);
   }, []);
 
+  const v = (n: number | undefined) => n ?? "…";
+
   return (
-    <StatGrid>
-      <StatCard icon={Users} color="blue" label="Total Users" value={userCount ?? "…"} description="Across all roles" to="/admin/users" />
-      <StatCard icon={FileText} color="amber" label="BOs / Production Orders" value={boCount ?? "…"} description="SAP/BO plan entries" to="/admin/production-orders" />
-      <StatCard icon={Layers} color="green" label="Total Coaches" value={coachCount ?? "…"} description="Generated from BO serial ranges" to="/admin/production-orders" />
-      <StatCard icon={ClipboardList} color="amber" label="Pending Shell Outturn" value={pendingShell ?? "…"} description="System-wide, all coaches" />
-      <StatCard icon={PackageCheck} color="purple" label="Awaiting Furnishing In" value={awaitingFurnIn ?? "…"} description="Shell Outturn done, not yet furnished" />
-      <StatCard icon={PaintBucket} color="blue" label="Awaiting Paint In" value={awaitingPaint ?? "…"} description="Furnishing In done, not yet painted" to="/line-management" />
-      <StatCard icon={PaintBucket} color="indigo" label="Awaiting Paint Out" value={awaitingPaintOut ?? "…"} description="Paint In done, not yet painted out" to="/line-management" />
-      <StatCard icon={Layers} color="purple" label="Awaiting Assembly In" value={awaitingAssemblyIn ?? "…"} description="Paint Out done, not yet assembled in" to="/line-management" />
-      <StatCard icon={Layers} color="green" label="Awaiting Assembly Out" value={awaitingAssemblyOut ?? "…"} description="Assembly In done, not yet assembled out" to="/line-management" />
-      <StatCard icon={ListChecks} color="indigo" label="Queued for Assignment" value={queued ?? "…"} description="Awaiting a skilled employee with capacity" />
-    </StatGrid>
+    <>
+      <StatGrid>
+        <StatCard icon={Users} color="blue" label="Total Users" value={userCount ?? "…"} description="Across all roles" to="/admin/users" />
+        <StatCard icon={FileText} color="amber" label="BOs / Production Orders" value={boCount ?? "…"} description="SAP/BO plan entries" to="/admin/production-orders" />
+        <StatCard icon={Layers} color="green" label="Total Coaches" value={v(stats?.total_coaches)} description="Generated from BO serial ranges" to="/admin/production-orders" />
+        <StatCard icon={ListChecks} color="indigo" label="Queued for Assignment" value={v(stats?.queued_for_assignment)} description="Awaiting a skilled employee with capacity" />
+      </StatGrid>
+
+      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-400">Pipeline — coach WIP by stage</p>
+      <PipelineGrid>
+        <PipelineStageCard label="Shell Outturn" done={v(stats?.total_shell_outturn)} waiting={v(stats?.pending_shell_outturn)} waitingLabel="Pending" />
+        <PipelineStageCard label="Furnishing In" done={v(stats?.total_furnishing_in)} waiting={v(stats?.awaiting_furnishing_in)} waitingLabel="Waiting" />
+        <PipelineStageCard label="Paint In" done={v(stats?.total_paint_in)} waiting={v(stats?.awaiting_paint_in)} waitingLabel="Waiting" to="/line-management" />
+        <PipelineStageCard label="Paint Out" done={v(stats?.total_paint_out)} waiting={v(stats?.awaiting_paint_out)} waitingLabel="Waiting" to="/line-management" />
+        <PipelineStageCard label="Assembly In" done={v(stats?.total_assembly_in)} waiting={v(stats?.awaiting_assembly_in)} waitingLabel="Waiting" to="/line-management" />
+        <PipelineStageCard label="Assembly Out" done={v(stats?.total_assembly_out)} waiting={v(stats?.awaiting_assembly_out)} waitingLabel="Waiting" to="/line-management" />
+      </PipelineGrid>
+    </>
   );
 }
 
@@ -478,7 +514,7 @@ export function HomePage() {
 
   return (
     <div>
-      <h2 className="text-3xl font-bold text-slate-900">Dashboard</h2>
+      <h2 className="text-lg font-semibold text-slate-800">Dashboard</h2>
 
       {user?.role === "ADMIN" && <AdminStats />}
       {user?.role === "SHELL_PRODUCTION" && <ShellProductionStats />}
