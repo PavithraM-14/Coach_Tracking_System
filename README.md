@@ -1,7 +1,8 @@
 # CTS — Coach Tracking System
 
 Current phase: Login, Admin, Shell Production, Shell Outturn, Furnish In,
-Paint In, Paint Out, Assembly In, Assembly Out.
+Paint In, Paint Out, Assembly In, Assembly Out, Local Outturn, Lock & Seal,
+Railway Board Outturn, Physical Dispatch — the full pipeline end to end.
 React + PHP + MySQL, seeded from cleaned legacy reference data. See
 `.claude/plans/` in this session's history for the full design rationale.
 
@@ -55,7 +56,7 @@ per pipeline direction, per role. All share the password `Passw0rd!`.
 | shunt1      | SHUNTING_STAFF                | Login only |
 | vendor1     | VENDOR_SNI                    | Login only |
 | finalinsp1  | FINAL_INSPECTION              | Login only |
-| dispatch1   | OUTTURN_DISPATCH              | Login only |
+| dispatch1   | OUTTURN_DISPATCH              | Yes — Local Outturn, Lock & Seal, Railway Board Outturn, Physical Dispatch (all four; skills: LHB AC + Non-AC per operation) — the only seeded Outturn/Dispatch login, uncapped like Furnishing |
 | viewer1     | MANAGEMENT_VIEWER             | Login only |
 
 Roles without a page yet can log in (so accounts exist ahead of their
@@ -91,6 +92,12 @@ link is not the only thing stopping access).
   **Assembly Out** (`/assembly-out`) — same pattern as Paint, its own
   line/slot grid and history page per stage (`/assembly-in/history`,
   `/assembly-out/history`).
+- **Outturn/Dispatch**: the pipeline's final four stages — **Local Outturn**
+  (`/local-outturn`), **Lock & Seal** (`/lock-seal`), **Railway Board
+  Outturn** (`/board-outturn`), **Physical Dispatch** (`/physical-dispatch`)
+  — each a simple worklist + date + remarks entry (no line/slot grid, unlike
+  Paint/Assembly — see "Final four stages" below), with its own history
+  page per stage.
 - Logging in as a role with no page yet lands on a Dashboard that says so —
   no dead nav links.
 
@@ -180,6 +187,34 @@ Furnishing In records, Paint sees their own Paint In/Paint Out (whichever
 they're configured for), and Assembly Production sees their own Assembly
 In/Assembly Out.
 
+## Final four stages: Local Outturn, Lock & Seal, Railway Board Outturn, Physical Dispatch
+
+The pipeline's last leg, all role `OUTTURN_DISPATCH`, chained sequentially
+after Assembly Out: **Local Outturn → Lock & Seal → Railway Board Outturn →
+Physical Dispatch** (the end of the pipeline). Structurally these are
+Furnishing In's pattern (worklist + pre-filled-but-editable date + remarks,
+one `create.php` per stage that validates the prior stage is done, inserts
+the row, and chains `Assignment::assignOrQueue()` into the next stage) —
+**not** Paint/Assembly's line/slot grid pattern, since nothing in the spec
+for these four mentions lines or per-line capacity, just a status + date per
+stage. Skill-based and uncapped like Furnishing (`LOCAL_OUTTURN`,
+`LOCK_SEAL`, `BOARD_OUTTURN`, `PHYSICAL_DISPATCH` operations, role
+`OUTTURN_DISPATCH`), reusing the same generic `SKILL_MODULES`/
+`MODULE_OPERATION` machinery `Assignment.php`/`Operations.php` already had —
+no new matching logic needed, only new table entries. Four new tables
+(`local_outturn_records`, `lock_seal_records`, `board_outturn_records`,
+`physical_dispatch_records`), each FK-chained to the one before it the same
+way `furnishing_in_records` FKs to `shell_outturn_transactions`.
+
+Demo config: **dispatch1** holds all four operations (both coach
+categories) — the only seeded Outturn/Dispatch login, same reasoning as
+furnish1 (a single generic worker covering everything, since there's no
+"separate login per direction" request for this role the way there was for
+Paint/Assembly). Verified live end-to-end: a coach walked through all ten
+stages, Shell Outturn through Physical Dispatch, with the Admin coach
+detail drill-down (`/admin/coaches/:id`) correctly showing all ten in its
+workflow stepper and history, remarks included.
+
 ## Furnishing In is a manual, skill-gated step
 
 Shell Outturn does **not** auto-create the Furnishing In record. Submitting
@@ -196,35 +231,41 @@ actually works day-to-day, so it's back to being its own operation with its
 own skill (`FURNISHING_IN`), just with the date conveniently pre-filled
 rather than manually typed from scratch.
 
-## Auto-assignment queue (Furnishing, Paint, Paint Out, Assembly In, Assembly Out)
+## Auto-assignment queue (Furnishing, Paint, Paint Out, Assembly In, Assembly Out, and the final four)
 
 `coach_assignments` (`backend/lib/Assignment.php`) tracks who owns the *next
 action* on a coach, one row per (coach, module): FURNISHING → Furnishing In,
 PAINT → Paint In, PAINT_OUT → Paint Out, ASSEMBLY_IN → Assembly In,
-ASSEMBLY_OUT → Assembly Out. A coach becomes eligible the moment the
-*previous* stage is recorded (Shell Outturn → FURNISHING, Furnishing In →
-PAINT, Paint In → PAINT_OUT, Paint Out → ASSEMBLY_IN, Assembly In →
-ASSEMBLY_OUT), and is auto-assigned to the least-loaded eligible employee
-with capacity, or left `QUEUED` if none have room. Completing the action
-marks that assignment `COMPLETED`, queues/assigns the coach for the next
-stage, and pulls the completing employee's oldest matching `QUEUED` coach
-into their now-freed capacity.
+ASSEMBLY_OUT → Assembly Out, LOCAL_OUTTURN → Local Outturn, LOCK_SEAL →
+Lock & Seal, BOARD_OUTTURN → Railway Board Outturn, PHYSICAL_DISPATCH →
+Physical Dispatch. A coach becomes eligible the moment the *previous* stage
+is recorded — Shell Outturn → FURNISHING, Furnishing In → PAINT, Paint In →
+PAINT_OUT, Paint Out → ASSEMBLY_IN, Assembly In → ASSEMBLY_OUT, Assembly Out
+→ LOCAL_OUTTURN, and so on through PHYSICAL_DISPATCH (the end of the chain)
+— and is auto-assigned to the least-loaded eligible employee with capacity,
+or left `QUEUED` if none have room. Completing the action marks that
+assignment `COMPLETED`, queues/assigns the coach for the next stage, and
+pulls the completing employee's oldest matching `QUEUED` coach into their
+now-freed capacity.
 
 Two matching strategies coexist, selected per module in `Assignment.php` via
 `SKILL_MODULES` (module → role_code) and `MATRIX_MODULES` (module → flag
 column) lookup tables:
 
-- **Skill-based** (`FURNISHING`, `ASSEMBLY_IN`, `ASSEMBLY_OUT`) —
+- **Skill-based** (`FURNISHING`, `ASSEMBLY_IN`, `ASSEMBLY_OUT`,
+  `LOCAL_OUTTURN`, `LOCK_SEAL`, `BOARD_OUTTURN`, `PHYSICAL_DISPATCH`) —
   `skills`/`user_skills` at coach-CATEGORY granularity (LHB AC / LHB
   Non-AC), edited via Skill Master + "Edit Skills" on `/admin/users`.
-  FURNISHING is **uncapped** (a single employee handles everything, nothing
-  ever `QUEUED`); ASSEMBLY_IN/ASSEMBLY_OUT are **capped at 5** like Paint,
-  since Assembly has the same multi-line, multi-worker physical setup.
-  ASSEMBLY_IN and ASSEMBLY_OUT are tracked as separate skills/operations even
-  though both map to role `ASSEMBLY_PRODUCTION` — a role no longer implies a
-  single module, which is why `SKILL_MODULES` exists as its own lookup
-  instead of assuming `module === role_code` (that assumption held for
-  Furnishing only, back when Furnishing was the only skill-based module).
+  FURNISHING and the four Outturn/Dispatch stages are **uncapped** (a single
+  employee handles everything, nothing ever `QUEUED`); ASSEMBLY_IN/
+  ASSEMBLY_OUT are **capped at 5** like Paint, since Assembly has the same
+  multi-line, multi-worker physical setup. Several modules are tracked as
+  separate skills/operations even though they map to the same role (both
+  Assembly stages → `ASSEMBLY_PRODUCTION`; all four final stages →
+  `OUTTURN_DISPATCH`) — a role no longer implies a single module, which is
+  why `SKILL_MODULES` exists as its own lookup instead of assuming `module
+  === role_code` (that assumption held for Furnishing only, back when
+  Furnishing was the only skill-based module).
 - **Matrix-based** (`PAINT`, `PAINT_OUT`) — `paint_type_assignments` at
   coach-TYPE granularity (e.g. LWCBAC, not just "LHB AC"), edited via the
   **Supervisor-Coach Assignments Matrix** (`/admin/paint-assignments`, Admin
@@ -317,24 +358,28 @@ Every row in Admin's **Recent Activity** feed is now a link to
 `/admin/coaches/:coachId` — a full pipeline snapshot for that specific
 coach, not just the one action that happened to show up in the feed.
 
-- `GET /api/admin/coach_detail.php?coach_id=` (Admin only) queries all six
+- `GET /api/admin/coach_detail.php?coach_id=` (Admin only) queries all ten
   transaction tables for that coach and returns: coach/BO info, a computed
   **current location** (which stage it's waiting on and who it's
   `ASSIGNED`/`QUEUED` to, via the same `coach_assignments` data the
-  assignment engine uses — or `COMPLETED` once Assembly Out is done), the
-  six-stage **workflow stepper** state (done/current/pending), and the full
-  **history** in pipeline order, each entry carrying its recorded-by user,
-  timestamp, line/slot location where applicable, and **remarks**.
+  assignment engine uses — or `COMPLETED` once Physical Dispatch is done),
+  the ten-stage **workflow stepper** state (done/current/pending), and the
+  full **history** in pipeline order, each entry carrying its recorded-by
+  user, timestamp, line/slot location where applicable, and **remarks**.
+  Both the stepper and history are driven entirely by `detail.stages`/
+  `detail.history` arrays the frontend just maps over, so they grew from six
+  entries to ten (adding the final four stages) with zero frontend changes.
 - The frontend (`CoachDetailPage.tsx`) renders this as three sections: a
   Coach Information card, a Current Location card, a horizontal workflow
-  stepper (green = done, blue outline = current, gray = pending), and a
-  History list.
-- `recent-activity.php` was extended to cover all six stages (it previously
-  only had Shell Outturn/Furnishing In/Paint In) and now returns `coach_id`
-  and `remarks` per row — both needed for the drill-down link and, for
-  Paint/Assembly roles, so their own feed also spans both directions of
-  their role (Paint: Paint In + Paint Out; Assembly: Assembly In + Assembly
-  Out), not just the first one.
+  stepper (green = done, blue outline = current, gray = pending,
+  horizontally scrollable now that there are ten), and a History list.
+- `recent-activity.php` was extended to cover all ten stages (it previously
+  only had Shell Outturn/Furnishing In/Paint In, then grew to six, now ten)
+  and returns `coach_id` and `remarks` per row — both needed for the
+  drill-down link and, for Paint/Assembly/Outturn-Dispatch roles, so their
+  own feed also spans every direction of their role (Paint: Paint In + Paint
+  Out; Assembly: Assembly In + Assembly Out; Outturn/Dispatch: all four
+  final stages), not just the first one.
 - **Bug fix while building this**: `furnishing_in_records` never had a
   `remarks` column — the Furnishing In form collected it and `create.php`
   parsed it from the request body, but silently dropped it before the
@@ -461,12 +506,13 @@ email → 6-digit OTP → new password + confirm → success → back to Sign In
   against the live `srm-approval.vercel.app` reference site's login page CSS.
 - Access control is role-level (route/API gated by role code) plus
   per-employee assignment via the queue above, for every live module
-  (Furnishing, Paint, Paint Out, Assembly In, Assembly Out).
+  (Furnishing, Paint, Paint Out, Assembly In, Assembly Out, Local Outturn,
+  Lock & Seal, Railway Board Outturn, Physical Dispatch).
   Coach-type/operation-stage-level filtering for other roles (Inspection,
   etc.) is deferred until those modules exist.
 - **"Assembly Operations"** — a stage between Assembly In and Assembly Out —
-  is explicitly deferred to a future phase; Assembly Out is currently the
-  end of the pipeline.
+  is explicitly deferred to a future phase; Physical Dispatch is currently
+  the end of the pipeline.
 - Out of scope for this phase: Mechanical/Electrical Inspection, Shunting,
-  Vendor/SNI, Final Inspection, Outturn/Dispatch, Assembly Operations, and
-  full RBAC configuration screens.
+  Vendor/SNI, Final Inspection, Assembly Operations, and full RBAC
+  configuration screens.

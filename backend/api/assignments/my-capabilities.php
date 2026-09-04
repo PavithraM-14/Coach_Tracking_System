@@ -10,7 +10,7 @@ require_once __DIR__ . '/../../lib/Assignment.php';
 // Assembly In / Assembly Out skills. The frontend uses this to show/hide
 // nav links and block direct navigation to a stage the employee isn't
 // configured for.
-$currentUser = Auth::requireRole(['FURNISHING', 'PAINT', 'ASSEMBLY_PRODUCTION']);
+$currentUser = Auth::requireRole(['FURNISHING', 'PAINT', 'ASSEMBLY_PRODUCTION', 'OUTTURN_DISPATCH']);
 
 $pdo = Db::get();
 $modules = Assignment::userCapableModules($pdo, (int) $currentUser['sub'], $currentUser['role']);

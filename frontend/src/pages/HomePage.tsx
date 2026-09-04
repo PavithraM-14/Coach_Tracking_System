@@ -12,6 +12,10 @@ import {
   PackageCheck,
   ListChecks,
   Search,
+  Lock,
+  Landmark,
+  Truck,
+  ClipboardCheck,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -22,6 +26,10 @@ import { getPaintInList, getPaintInWorklist, getPaintLines } from "../api/paintI
 import { getPaintOutList, getPaintOutWorklist, getPaintOutLines } from "../api/paintOut";
 import { getAssemblyInList, getAssemblyInWorklist, getAssemblyInLines } from "../api/assemblyIn";
 import { getAssemblyOutList, getAssemblyOutWorklist, getAssemblyOutLines } from "../api/assemblyOut";
+import { getLocalOutturnList, getLocalOutturnWorklist } from "../api/localOutturn";
+import { getLockSealList, getLockSealWorklist } from "../api/lockSeal";
+import { getBoardOutturnList, getBoardOutturnWorklist } from "../api/boardOutturn";
+import { getPhysicalDispatchList, getPhysicalDispatchWorklist } from "../api/physicalDispatch";
 import { getUsers, getProductionOrders, getAdminDashboardStats } from "../api/admin";
 import { getRecentActivity } from "../api/dashboard";
 import { getMyAssignmentSummary } from "../api/assignments";
@@ -148,6 +156,10 @@ function AdminStats() {
         <PipelineStageCard label="Paint Out" done={v(stats?.total_paint_out)} waiting={v(stats?.awaiting_paint_out)} waitingLabel="Waiting" to="/line-management" />
         <PipelineStageCard label="Assembly In" done={v(stats?.total_assembly_in)} waiting={v(stats?.awaiting_assembly_in)} waitingLabel="Waiting" to="/line-management" />
         <PipelineStageCard label="Assembly Out" done={v(stats?.total_assembly_out)} waiting={v(stats?.awaiting_assembly_out)} waitingLabel="Waiting" to="/line-management" />
+        <PipelineStageCard label="Local Outturn" done={v(stats?.total_local_outturn)} waiting={v(stats?.awaiting_local_outturn)} waitingLabel="Waiting" to="/local-outturn/history" />
+        <PipelineStageCard label="Lock & Seal" done={v(stats?.total_lock_seal)} waiting={v(stats?.awaiting_lock_seal)} waitingLabel="Waiting" to="/lock-seal/history" />
+        <PipelineStageCard label="Railway Board Outturn" done={v(stats?.total_board_outturn)} waiting={v(stats?.awaiting_board_outturn)} waitingLabel="Waiting" to="/board-outturn/history" />
+        <PipelineStageCard label="Physical Dispatch" done={v(stats?.total_physical_dispatch)} waiting={v(stats?.awaiting_physical_dispatch)} waitingLabel="Waiting" to="/physical-dispatch/history" />
       </PipelineGrid>
     </>
   );
@@ -402,6 +414,112 @@ function AssemblyStats({ capabilities }: { capabilities: string[] }) {
   );
 }
 
+// The four final stages have no line/slot grid (unlike Paint/Assembly), so
+// their dashboard cards drop the "Available Slots" tile — just Awaiting /
+// Done Today / Total Records, same reasoning as Furnishing's simpler model.
+function LocalOutturnStats() {
+  const [awaiting, setAwaiting] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [doneToday, setDoneToday] = useState<number | null>(null);
+
+  useEffect(() => {
+    getLocalOutturnWorklist().then((res) => setAwaiting(res.data.length));
+    getLocalOutturnList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalRecords(res.data.length);
+      setDoneToday(res.data.filter((r) => r.local_outturn_datetime.slice(0, 10) === todayStr).length);
+    });
+  }, []);
+
+  return (
+    <StatGrid>
+      <StatCard icon={Clock} color="amber" label="Awaiting Local Outturn" value={awaiting ?? "…"} description="Assembly Out done, pending allocation" to="/local-outturn" />
+      <StatCard icon={ClipboardList} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Local Outturn recorded today" to="/local-outturn/history?today=1" />
+      <StatCard icon={ClipboardCheck} color="blue" label="Total Local Outturn Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/local-outturn/history" />
+    </StatGrid>
+  );
+}
+
+function LockSealStats() {
+  const [awaiting, setAwaiting] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [doneToday, setDoneToday] = useState<number | null>(null);
+
+  useEffect(() => {
+    getLockSealWorklist().then((res) => setAwaiting(res.data.length));
+    getLockSealList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalRecords(res.data.length);
+      setDoneToday(res.data.filter((r) => r.lock_seal_datetime.slice(0, 10) === todayStr).length);
+    });
+  }, []);
+
+  return (
+    <StatGrid>
+      <StatCard icon={Clock} color="amber" label="Awaiting Lock & Seal" value={awaiting ?? "…"} description="Local Outturn done, pending allocation" to="/lock-seal" />
+      <StatCard icon={Lock} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Lock & Seal recorded today" to="/lock-seal/history?today=1" />
+      <StatCard icon={Lock} color="purple" label="Total Lock & Seal Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/lock-seal/history" />
+    </StatGrid>
+  );
+}
+
+function BoardOutturnStats() {
+  const [awaiting, setAwaiting] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [doneToday, setDoneToday] = useState<number | null>(null);
+
+  useEffect(() => {
+    getBoardOutturnWorklist().then((res) => setAwaiting(res.data.length));
+    getBoardOutturnList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalRecords(res.data.length);
+      setDoneToday(res.data.filter((r) => r.board_outturn_datetime.slice(0, 10) === todayStr).length);
+    });
+  }, []);
+
+  return (
+    <StatGrid>
+      <StatCard icon={Clock} color="amber" label="Awaiting Board Outturn" value={awaiting ?? "…"} description="Lock & Seal done, pending allocation" to="/board-outturn" />
+      <StatCard icon={Landmark} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Railway Board Outturn recorded today" to="/board-outturn/history?today=1" />
+      <StatCard icon={Landmark} color="green" label="Total Board Outturn Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/board-outturn/history" />
+    </StatGrid>
+  );
+}
+
+function PhysicalDispatchStats() {
+  const [awaiting, setAwaiting] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [doneToday, setDoneToday] = useState<number | null>(null);
+
+  useEffect(() => {
+    getPhysicalDispatchWorklist().then((res) => setAwaiting(res.data.length));
+    getPhysicalDispatchList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalRecords(res.data.length);
+      setDoneToday(res.data.filter((r) => r.dispatch_datetime.slice(0, 10) === todayStr).length);
+    });
+  }, []);
+
+  return (
+    <StatGrid>
+      <StatCard icon={Clock} color="amber" label="Awaiting Dispatch" value={awaiting ?? "…"} description="Board Outturn done, pending allocation" to="/physical-dispatch" />
+      <StatCard icon={Truck} color="indigo" label="Dispatched Today" value={doneToday ?? "…"} description="Physical Dispatch recorded today" to="/physical-dispatch/history?today=1" />
+      <StatCard icon={Truck} color="blue" label="Total Dispatch Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/physical-dispatch/history" />
+    </StatGrid>
+  );
+}
+
+function OutturnDispatchStats({ capabilities }: { capabilities: string[] }) {
+  return (
+    <>
+      {capabilities.includes("LOCAL_OUTTURN") && <LocalOutturnStats />}
+      {capabilities.includes("LOCK_SEAL") && <LockSealStats />}
+      {capabilities.includes("BOARD_OUTTURN") && <BoardOutturnStats />}
+      {capabilities.includes("PHYSICAL_DISPATCH") && <PhysicalDispatchStats />}
+    </>
+  );
+}
+
 const ACTIVITY_LABEL: Record<RecentActivityRow["type"], string> = {
   SHELL_OUTTURN: "Shell Outturn",
   FURNISHING_IN: "Furnishing In",
@@ -409,6 +527,10 @@ const ACTIVITY_LABEL: Record<RecentActivityRow["type"], string> = {
   PAINT_OUT: "Paint Out",
   ASSEMBLY_IN: "Assembly In",
   ASSEMBLY_OUT: "Assembly Out",
+  LOCAL_OUTTURN: "Local Outturn",
+  LOCK_SEAL: "Lock & Seal",
+  BOARD_OUTTURN: "Railway Board Outturn",
+  PHYSICAL_DISPATCH: "Physical Dispatch",
 };
 
 const ACTIVITY_COLOR: Record<RecentActivityRow["type"], string> = {
@@ -418,6 +540,10 @@ const ACTIVITY_COLOR: Record<RecentActivityRow["type"], string> = {
   PAINT_OUT: "bg-indigo-100 text-indigo-700",
   ASSEMBLY_IN: "bg-teal-100 text-teal-700",
   ASSEMBLY_OUT: "bg-green-100 text-green-700",
+  LOCAL_OUTTURN: "bg-amber-100 text-amber-700",
+  LOCK_SEAL: "bg-slate-200 text-slate-700",
+  BOARD_OUTTURN: "bg-cyan-100 text-cyan-700",
+  PHYSICAL_DISPATCH: "bg-rose-100 text-rose-700",
 };
 
 function RecentActivity() {
@@ -505,12 +631,17 @@ export function HomePage() {
   const { user, capabilities, capabilitiesLoading } = useAuth();
   const items = visibleNavItems(user?.role, capabilities);
   const hasActivityFeed =
-    user?.role && ["ADMIN", "SHELL_PRODUCTION", "FURNISHING", "PAINT", "ASSEMBLY_PRODUCTION"].includes(user.role);
-  // PAINT/ASSEMBLY_PRODUCTION have working modules, just not necessarily
-  // configured for this specific login — different message than a role with
-  // no module at all (e.g. MECHANICAL_INSPECTION, still unbuilt).
+    user?.role &&
+    ["ADMIN", "SHELL_PRODUCTION", "FURNISHING", "PAINT", "ASSEMBLY_PRODUCTION", "OUTTURN_DISPATCH"].includes(user.role);
+  // PAINT/ASSEMBLY_PRODUCTION/OUTTURN_DISPATCH have working modules, just
+  // not necessarily configured for this specific login — different message
+  // than a role with no module at all (e.g. MECHANICAL_INSPECTION, still
+  // unbuilt).
   const isUnconfigured =
-    !capabilitiesLoading && items.length === 0 && user?.role && ["PAINT", "ASSEMBLY_PRODUCTION", "FURNISHING"].includes(user.role);
+    !capabilitiesLoading &&
+    items.length === 0 &&
+    user?.role &&
+    ["PAINT", "ASSEMBLY_PRODUCTION", "FURNISHING", "OUTTURN_DISPATCH"].includes(user.role);
 
   return (
     <div>
@@ -521,6 +652,7 @@ export function HomePage() {
       {user?.role === "FURNISHING" && capabilities.includes("FURNISHING") && <FurnishingStats />}
       {user?.role === "PAINT" && <PaintStats capabilities={capabilities} />}
       {user?.role === "ASSEMBLY_PRODUCTION" && <AssemblyStats capabilities={capabilities} />}
+      {user?.role === "OUTTURN_DISPATCH" && <OutturnDispatchStats capabilities={capabilities} />}
 
       {hasActivityFeed && <RecentActivity />}
 

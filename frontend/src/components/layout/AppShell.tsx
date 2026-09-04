@@ -13,6 +13,9 @@ import {
   LogOut,
   Menu,
   User,
+  Lock,
+  Landmark,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -48,6 +51,10 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/paint-out", label: "Paint Out", icon: PaintBucket, roles: ["PAINT"], module: "PAINT_OUT" },
   { to: "/assembly-in", label: "Assembly In", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_IN" },
   { to: "/assembly-out", label: "Assembly Out", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_OUT" },
+  { to: "/local-outturn", label: "Local Outturn", icon: ClipboardCheck, roles: ["OUTTURN_DISPATCH"], module: "LOCAL_OUTTURN" },
+  { to: "/lock-seal", label: "Lock & Seal", icon: Lock, roles: ["OUTTURN_DISPATCH"], module: "LOCK_SEAL" },
+  { to: "/board-outturn", label: "Railway Board Outturn", icon: Landmark, roles: ["OUTTURN_DISPATCH"], module: "BOARD_OUTTURN" },
+  { to: "/physical-dispatch", label: "Physical Dispatch", icon: Truck, roles: ["OUTTURN_DISPATCH"], module: "PHYSICAL_DISPATCH" },
 ];
 
 export function visibleNavItems(role: RoleCode | undefined, capabilities: string[] = []): NavItem[] {

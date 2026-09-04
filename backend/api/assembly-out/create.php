@@ -90,9 +90,11 @@ try {
     $assemblyOutId = (int) $pdo->lastInsertId();
 
     // Frees up this employee's Assembly Out capacity, auto-pulling their next queued coach.
-    // End of the pipeline for now — "Assembly Operations" (a future stage between
-    // Assembly In and Assembly Out) will insert itself here later.
+    // "Assembly Operations" (a future stage between Assembly In and Assembly
+    // Out) will insert itself before this line later.
     Assignment::complete($pdo, $coachId, 'ASSEMBLY_OUT');
+    // Queues/assigns the coach for Local Outturn, the next stage in the pipeline.
+    Assignment::assignOrQueue($pdo, $coachId, 'LOCAL_OUTTURN');
 
     $pdo->commit();
 } catch (PDOException $e) {

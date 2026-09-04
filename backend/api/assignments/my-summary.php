@@ -4,16 +4,18 @@ require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../lib/Assignment.php';
 require_once __DIR__ . '/../../lib/Operations.php';
 
-$currentUser = Auth::requireRole(['FURNISHING', 'PAINT', 'ASSEMBLY_PRODUCTION']);
+$currentUser = Auth::requireRole(['FURNISHING', 'PAINT', 'ASSEMBLY_PRODUCTION', 'OUTTURN_DISPATCH']);
 
 // A role can now cover more than one pipeline stage (PAINT does Paint In AND
-// Paint Out; ASSEMBLY_PRODUCTION does Assembly In AND Assembly Out), so the
-// caller must say which module it wants via ?module=. Falls back to that
-// role's first/only module for older callers that don't pass one.
+// Paint Out; ASSEMBLY_PRODUCTION does Assembly In AND Assembly Out;
+// OUTTURN_DISPATCH does all four final stages), so the caller must say
+// which module it wants via ?module=. Falls back to that role's first/only
+// module for older callers that don't pass one.
 $roleModules = [
     'FURNISHING' => ['FURNISHING'],
     'PAINT' => ['PAINT', 'PAINT_OUT'],
     'ASSEMBLY_PRODUCTION' => ['ASSEMBLY_IN', 'ASSEMBLY_OUT'],
+    'OUTTURN_DISPATCH' => ['LOCAL_OUTTURN', 'LOCK_SEAL', 'BOARD_OUTTURN', 'PHYSICAL_DISPATCH'],
 ];
 $allowedForRole = $roleModules[$currentUser['role']] ?? [];
 $requestedModule = trim($_GET['module'] ?? '');

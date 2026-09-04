@@ -322,22 +322,84 @@ CREATE TABLE assembly_out_transactions (
   FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
 );
 
+-- Final four stages, all OUTTURN_DISPATCH role: no line/slot grid (unlike
+-- Paint/Assembly) — each is a simple status+date checklist action, one
+-- employee/one queue like Furnishing In, chained sequentially after
+-- Assembly Out. Physical Dispatch is the end of the pipeline.
+CREATE TABLE local_outturn_records (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL UNIQUE,
+  assembly_out_id INT NOT NULL,
+  local_outturn_datetime DATETIME NOT NULL,
+  remarks VARCHAR(255) NULL,
+  recorded_by_user_id INT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (assembly_out_id) REFERENCES assembly_out_transactions(id),
+  FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE lock_seal_records (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL UNIQUE,
+  local_outturn_id INT NOT NULL,
+  lock_seal_datetime DATETIME NOT NULL,
+  remarks VARCHAR(255) NULL,
+  recorded_by_user_id INT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (local_outturn_id) REFERENCES local_outturn_records(id),
+  FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE board_outturn_records (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL UNIQUE,
+  lock_seal_id INT NOT NULL,
+  board_outturn_datetime DATETIME NOT NULL,
+  remarks VARCHAR(255) NULL,
+  recorded_by_user_id INT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (lock_seal_id) REFERENCES lock_seal_records(id),
+  FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
+);
+
+CREATE TABLE physical_dispatch_records (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL UNIQUE,
+  board_outturn_id INT NOT NULL,
+  dispatch_datetime DATETIME NOT NULL,
+  remarks VARCHAR(255) NULL,
+  recorded_by_user_id INT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (board_outturn_id) REFERENCES board_outturn_records(id),
+  FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
+);
+
 -- Tracks who is responsible for the NEXT action on a coach within a module
 -- (Furnishing In for FURNISHING, Paint In for PAINT, Paint Out for
--- PAINT_OUT, Assembly In for ASSEMBLY_IN, Assembly Out for ASSEMBLY_OUT).
+-- PAINT_OUT, Assembly In for ASSEMBLY_IN, Assembly Out for ASSEMBLY_OUT,
+-- and so on through LOCAL_OUTTURN/LOCK_SEAL/BOARD_OUTTURN/PHYSICAL_DISPATCH).
 -- Created the moment a coach becomes eligible for that module; a matching
 -- under-capacity employee is assigned immediately, otherwise the row sits
 -- QUEUED until capacity frees up. Capacity is per-module (see
 -- Assignment::MODULE_CAPACITY): PAINT/PAINT_OUT/ASSEMBLY_IN/ASSEMBLY_OUT cap
 -- at 5 concurrent ASSIGNED rows per user (parallel workers across lines);
--- FURNISHING is uncapped (one employee handles all of it, so every eligible
--- coach goes straight to them — never QUEUED). Enforced in application code,
--- not a DB constraint, since MySQL check constraints can't easily express
--- "count of related rows".
+-- FURNISHING and the four Outturn/Dispatch stages are uncapped (one
+-- employee handles all of it, so every eligible coach goes straight to
+-- them — never QUEUED). Enforced in application code, not a DB constraint,
+-- since MySQL check constraints can't easily express "count of related rows".
 CREATE TABLE coach_assignments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coach_id INT NOT NULL,
-  module VARCHAR(20) NOT NULL,           -- FURNISHING, PAINT, PAINT_OUT, ASSEMBLY_IN, ASSEMBLY_OUT
+  module VARCHAR(20) NOT NULL,           -- FURNISHING, PAINT, PAINT_OUT, ASSEMBLY_IN, ASSEMBLY_OUT,
+                                          -- LOCAL_OUTTURN, LOCK_SEAL, BOARD_OUTTURN, PHYSICAL_DISPATCH
   assigned_user_id INT NULL,             -- NULL while QUEUED
   status VARCHAR(20) NOT NULL DEFAULT 'QUEUED', -- QUEUED, ASSIGNED, COMPLETED
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

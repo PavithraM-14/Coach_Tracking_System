@@ -40,6 +40,30 @@ $awaitingAssemblyOut = (int) $pdo->query(
      WHERE aot.id IS NULL"
 )->fetchColumn();
 
+$awaitingLocalOutturn = (int) $pdo->query(
+    "SELECT COUNT(*) FROM assembly_out_transactions aot
+     LEFT JOIN local_outturn_records lor ON lor.coach_id = aot.coach_id
+     WHERE lor.id IS NULL"
+)->fetchColumn();
+
+$awaitingLockSeal = (int) $pdo->query(
+    "SELECT COUNT(*) FROM local_outturn_records lor
+     LEFT JOIN lock_seal_records lsr ON lsr.coach_id = lor.coach_id
+     WHERE lsr.id IS NULL"
+)->fetchColumn();
+
+$awaitingBoardOutturn = (int) $pdo->query(
+    "SELECT COUNT(*) FROM lock_seal_records lsr
+     LEFT JOIN board_outturn_records bor ON bor.coach_id = lsr.coach_id
+     WHERE bor.id IS NULL"
+)->fetchColumn();
+
+$awaitingPhysicalDispatch = (int) $pdo->query(
+    "SELECT COUNT(*) FROM board_outturn_records bor
+     LEFT JOIN physical_dispatch_records pdr ON pdr.coach_id = bor.coach_id
+     WHERE pdr.id IS NULL"
+)->fetchColumn();
+
 $queuedForAssignment = (int) $pdo->query(
     "SELECT COUNT(*) FROM coach_assignments WHERE status = 'QUEUED'"
 )->fetchColumn();
@@ -54,6 +78,10 @@ $totalPaintIn = (int) $pdo->query('SELECT COUNT(*) FROM paint_in_transactions')-
 $totalPaintOut = (int) $pdo->query('SELECT COUNT(*) FROM paint_out_transactions')->fetchColumn();
 $totalAssemblyIn = (int) $pdo->query('SELECT COUNT(*) FROM assembly_in_transactions')->fetchColumn();
 $totalAssemblyOut = (int) $pdo->query('SELECT COUNT(*) FROM assembly_out_transactions')->fetchColumn();
+$totalLocalOutturn = (int) $pdo->query('SELECT COUNT(*) FROM local_outturn_records')->fetchColumn();
+$totalLockSeal = (int) $pdo->query('SELECT COUNT(*) FROM lock_seal_records')->fetchColumn();
+$totalBoardOutturn = (int) $pdo->query('SELECT COUNT(*) FROM board_outturn_records')->fetchColumn();
+$totalPhysicalDispatch = (int) $pdo->query('SELECT COUNT(*) FROM physical_dispatch_records')->fetchColumn();
 $totalCoaches = (int) $pdo->query('SELECT COUNT(*) FROM coaches')->fetchColumn();
 
 Response::ok([
@@ -63,6 +91,10 @@ Response::ok([
     'awaiting_paint_out' => $awaitingPaintOut,
     'awaiting_assembly_in' => $awaitingAssemblyIn,
     'awaiting_assembly_out' => $awaitingAssemblyOut,
+    'awaiting_local_outturn' => $awaitingLocalOutturn,
+    'awaiting_lock_seal' => $awaitingLockSeal,
+    'awaiting_board_outturn' => $awaitingBoardOutturn,
+    'awaiting_physical_dispatch' => $awaitingPhysicalDispatch,
     'queued_for_assignment' => $queuedForAssignment,
     'total_coaches' => $totalCoaches,
     'total_shell_outturn' => $totalShellOutturn,
@@ -71,4 +103,8 @@ Response::ok([
     'total_paint_out' => $totalPaintOut,
     'total_assembly_in' => $totalAssemblyIn,
     'total_assembly_out' => $totalAssemblyOut,
+    'total_local_outturn' => $totalLocalOutturn,
+    'total_lock_seal' => $totalLockSeal,
+    'total_board_outturn' => $totalBoardOutturn,
+    'total_physical_dispatch' => $totalPhysicalDispatch,
 ]);

@@ -38,7 +38,14 @@ export interface AdminUserRow {
   skills: Array<{ id: number; name: string }>;
 }
 
-export type OperationCode = "FURNISHING_IN" | "ASSEMBLY_IN" | "ASSEMBLY_OUT";
+export type OperationCode =
+  | "FURNISHING_IN"
+  | "ASSEMBLY_IN"
+  | "ASSEMBLY_OUT"
+  | "LOCAL_OUTTURN"
+  | "LOCK_SEAL"
+  | "BOARD_OUTTURN"
+  | "PHYSICAL_DISPATCH";
 
 export interface Skill {
   id: number;
@@ -123,6 +130,85 @@ export interface FurnishingInCreateResponse {
   furnishing_in_id: number;
   coach_number: string;
   furnishing_in_datetime: string;
+}
+
+// Final four stages (all OUTTURN_DISPATCH role) — no line/slot grid, simple
+// status+date checklist actions chained after Assembly Out, same shape as
+// Furnishing In's worklist/create/list pattern.
+export interface LocalOutturnWorklistCoach extends WorklistCoach {
+  assembly_out_datetime: string;
+}
+
+export interface LocalOutturnCreateResponse {
+  local_outturn_id: number;
+  coach_number: string;
+  local_outturn_datetime: string;
+}
+
+export interface LocalOutturnListRow {
+  local_outturn_id: number;
+  coach_number: string;
+  coach_type: string;
+  local_outturn_datetime: string;
+  recorded_by: string;
+  status: string;
+}
+
+export interface LockSealWorklistCoach extends WorklistCoach {
+  local_outturn_datetime: string;
+}
+
+export interface LockSealCreateResponse {
+  lock_seal_id: number;
+  coach_number: string;
+  lock_seal_datetime: string;
+}
+
+export interface LockSealListRow {
+  lock_seal_id: number;
+  coach_number: string;
+  coach_type: string;
+  lock_seal_datetime: string;
+  recorded_by: string;
+  status: string;
+}
+
+export interface BoardOutturnWorklistCoach extends WorklistCoach {
+  lock_seal_datetime: string;
+}
+
+export interface BoardOutturnCreateResponse {
+  board_outturn_id: number;
+  coach_number: string;
+  board_outturn_datetime: string;
+}
+
+export interface BoardOutturnListRow {
+  board_outturn_id: number;
+  coach_number: string;
+  coach_type: string;
+  board_outturn_datetime: string;
+  recorded_by: string;
+  status: string;
+}
+
+export interface PhysicalDispatchWorklistCoach extends WorklistCoach {
+  board_outturn_datetime: string;
+}
+
+export interface PhysicalDispatchCreateResponse {
+  physical_dispatch_id: number;
+  coach_number: string;
+  dispatch_datetime: string;
+}
+
+export interface PhysicalDispatchListRow {
+  physical_dispatch_id: number;
+  coach_number: string;
+  coach_type: string;
+  dispatch_datetime: string;
+  recorded_by: string;
+  status: string;
 }
 
 export interface PaintLineSlot {
@@ -278,7 +364,11 @@ export type ActivityType =
   | "PAINT_IN"
   | "PAINT_OUT"
   | "ASSEMBLY_IN"
-  | "ASSEMBLY_OUT";
+  | "ASSEMBLY_OUT"
+  | "LOCAL_OUTTURN"
+  | "LOCK_SEAL"
+  | "BOARD_OUTTURN"
+  | "PHYSICAL_DISPATCH";
 
 export interface RecentActivityRow {
   type: ActivityType;
@@ -348,6 +438,14 @@ export interface AdminDashboardStats {
   total_paint_out: number;
   total_assembly_in: number;
   total_assembly_out: number;
+  awaiting_local_outturn: number;
+  awaiting_lock_seal: number;
+  awaiting_board_outturn: number;
+  awaiting_physical_dispatch: number;
+  total_local_outturn: number;
+  total_lock_seal: number;
+  total_board_outturn: number;
+  total_physical_dispatch: number;
 }
 
 export interface DeleteUserResponse {

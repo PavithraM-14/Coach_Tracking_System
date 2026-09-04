@@ -97,6 +97,38 @@ $stmt = $pdo->prepare(
 $stmt->execute(['coach_id' => $coachId]);
 $assemblyOut = $stmt->fetch();
 
+$stmt = $pdo->prepare(
+    'SELECT lor.id, lor.local_outturn_datetime AS occurred_at, lor.remarks, u.full_name AS recorded_by
+     FROM local_outturn_records lor JOIN users u ON u.id = lor.recorded_by_user_id
+     WHERE lor.coach_id = :coach_id'
+);
+$stmt->execute(['coach_id' => $coachId]);
+$localOutturn = $stmt->fetch();
+
+$stmt = $pdo->prepare(
+    'SELECT lsr.id, lsr.lock_seal_datetime AS occurred_at, lsr.remarks, u.full_name AS recorded_by
+     FROM lock_seal_records lsr JOIN users u ON u.id = lsr.recorded_by_user_id
+     WHERE lsr.coach_id = :coach_id'
+);
+$stmt->execute(['coach_id' => $coachId]);
+$lockSeal = $stmt->fetch();
+
+$stmt = $pdo->prepare(
+    'SELECT bor.id, bor.board_outturn_datetime AS occurred_at, bor.remarks, u.full_name AS recorded_by
+     FROM board_outturn_records bor JOIN users u ON u.id = bor.recorded_by_user_id
+     WHERE bor.coach_id = :coach_id'
+);
+$stmt->execute(['coach_id' => $coachId]);
+$boardOutturn = $stmt->fetch();
+
+$stmt = $pdo->prepare(
+    'SELECT pdr.id, pdr.dispatch_datetime AS occurred_at, pdr.remarks, u.full_name AS recorded_by
+     FROM physical_dispatch_records pdr JOIN users u ON u.id = pdr.recorded_by_user_id
+     WHERE pdr.coach_id = :coach_id'
+);
+$stmt->execute(['coach_id' => $coachId]);
+$physicalDispatch = $stmt->fetch();
+
 // PDOStatement::fetch() returns false (not null) when no row matched.
 function historyEntry(string $stage, $row): ?array
 {
@@ -122,6 +154,10 @@ $history = array_values(array_filter([
     historyEntry('Paint Out', $paintOut),
     historyEntry('Assembly In', $assemblyIn),
     historyEntry('Assembly Out', $assemblyOut),
+    historyEntry('Local Outturn', $localOutturn),
+    historyEntry('Lock & Seal', $lockSeal),
+    historyEntry('Railway Board Outturn', $boardOutturn),
+    historyEntry('Physical Dispatch', $physicalDispatch),
 ]));
 
 // Pipeline stage completion, in order, drives both "where is the coach now"
@@ -133,6 +169,10 @@ $stages = [
     ['key' => 'PAINT_OUT', 'label' => 'Paint Out', 'done' => (bool) $paintOut],
     ['key' => 'ASSEMBLY_IN', 'label' => 'Assembly In', 'done' => (bool) $assemblyIn],
     ['key' => 'ASSEMBLY_OUT', 'label' => 'Assembly Out', 'done' => (bool) $assemblyOut],
+    ['key' => 'LOCAL_OUTTURN', 'label' => 'Local Outturn', 'done' => (bool) $localOutturn],
+    ['key' => 'LOCK_SEAL', 'label' => 'Lock & Seal', 'done' => (bool) $lockSeal],
+    ['key' => 'BOARD_OUTTURN', 'label' => 'Railway Board Outturn', 'done' => (bool) $boardOutturn],
+    ['key' => 'PHYSICAL_DISPATCH', 'label' => 'Physical Dispatch', 'done' => (bool) $physicalDispatch],
 ];
 
 // The module (coach_assignments) that would own the NEXT action, based on
@@ -145,6 +185,10 @@ $nextModuleByStage = [
     'PAINT_OUT' => 'PAINT_OUT',
     'ASSEMBLY_IN' => 'ASSEMBLY_IN',
     'ASSEMBLY_OUT' => 'ASSEMBLY_OUT',
+    'LOCAL_OUTTURN' => 'LOCAL_OUTTURN',
+    'LOCK_SEAL' => 'LOCK_SEAL',
+    'BOARD_OUTTURN' => 'BOARD_OUTTURN',
+    'PHYSICAL_DISPATCH' => 'PHYSICAL_DISPATCH',
 ];
 
 $currentStageKey = null;
@@ -157,7 +201,7 @@ foreach ($stages as $s) {
 
 $location = null;
 if ($currentStageKey === null) {
-    $location = ['status' => 'COMPLETED', 'label' => 'Pipeline complete — Assembly Out done', 'held_by' => null];
+    $location = ['status' => 'COMPLETED', 'label' => 'Pipeline complete — Physical Dispatch done', 'held_by' => null];
 } else {
     $module = $nextModuleByStage[$currentStageKey];
     if ($module === null) {

@@ -31,6 +31,10 @@ class Assignment
         'PAINT_OUT' => 5,
         'ASSEMBLY_IN' => 5,
         'ASSEMBLY_OUT' => 5,
+        'LOCAL_OUTTURN' => null, // unlimited — no lines/capacity concept, same as FURNISHING
+        'LOCK_SEAL' => null,
+        'BOARD_OUTTURN' => null,
+        'PHYSICAL_DISPATCH' => null,
     ];
 
     /** module => role_code, for skills/user_skills-matched modules. */
@@ -38,6 +42,10 @@ class Assignment
         'FURNISHING' => 'FURNISHING',
         'ASSEMBLY_IN' => 'ASSEMBLY_PRODUCTION',
         'ASSEMBLY_OUT' => 'ASSEMBLY_PRODUCTION',
+        'LOCAL_OUTTURN' => 'OUTTURN_DISPATCH',
+        'LOCK_SEAL' => 'OUTTURN_DISPATCH',
+        'BOARD_OUTTURN' => 'OUTTURN_DISPATCH',
+        'PHYSICAL_DISPATCH' => 'OUTTURN_DISPATCH',
     ];
 
     /** module => paint_type_assignments flag column, for matrix-matched modules. */

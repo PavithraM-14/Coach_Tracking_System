@@ -101,14 +101,24 @@ INSERT INTO skills (id, name, operation, role_code, coach_category_id) VALUES
 (3, 'Assembly In - LHB AC', 'ASSEMBLY_IN', 'ASSEMBLY_PRODUCTION', 1),
 (4, 'Assembly In - LHB Non-AC', 'ASSEMBLY_IN', 'ASSEMBLY_PRODUCTION', 2),
 (5, 'Assembly Out - LHB AC', 'ASSEMBLY_OUT', 'ASSEMBLY_PRODUCTION', 1),
-(6, 'Assembly Out - LHB Non-AC', 'ASSEMBLY_OUT', 'ASSEMBLY_PRODUCTION', 2);
+(6, 'Assembly Out - LHB Non-AC', 'ASSEMBLY_OUT', 'ASSEMBLY_PRODUCTION', 2),
+(7, 'Local Outturn - LHB AC', 'LOCAL_OUTTURN', 'OUTTURN_DISPATCH', 1),
+(8, 'Local Outturn - LHB Non-AC', 'LOCAL_OUTTURN', 'OUTTURN_DISPATCH', 2),
+(9, 'Lock & Seal - LHB AC', 'LOCK_SEAL', 'OUTTURN_DISPATCH', 1),
+(10, 'Lock & Seal - LHB Non-AC', 'LOCK_SEAL', 'OUTTURN_DISPATCH', 2),
+(11, 'Railway Board Outturn - LHB AC', 'BOARD_OUTTURN', 'OUTTURN_DISPATCH', 1),
+(12, 'Railway Board Outturn - LHB Non-AC', 'BOARD_OUTTURN', 'OUTTURN_DISPATCH', 2),
+(13, 'Physical Dispatch - LHB AC', 'PHYSICAL_DISPATCH', 'OUTTURN_DISPATCH', 1),
+(14, 'Physical Dispatch - LHB Non-AC', 'PHYSICAL_DISPATCH', 'OUTTURN_DISPATCH', 2);
 
 -- ===================== User skills =====================
 -- furnish1 covers both categories — every coach past Shell Outturn is
 -- assigned to them, uncapped (see Assignment::MODULE_CAPACITY). Assembly is
 -- split like Paint: assemble1 = Assembly In only, assemble2 = Assembly Out
 -- only, each across both categories — capped at 5 concurrent like Paint, so
--- coaches queue once one of them has 5 ASSIGNED.
+-- coaches queue once one of them has 5 ASSIGNED. dispatch1 covers all four
+-- Outturn/Dispatch operations (the only seeded login for that role),
+-- uncapped like Furnishing — no lines/capacity concept for these stages.
 
 INSERT INTO user_skills (user_id, skill_id) VALUES
 (4, 1),  -- furnish1: LHB AC Furnishing
@@ -116,7 +126,11 @@ INSERT INTO user_skills (user_id, skill_id) VALUES
 (6, 3),  -- assemble1: LHB AC Assembly In
 (6, 4),  -- assemble1: LHB Non-AC Assembly In
 (16, 5), -- assemble2: LHB AC Assembly Out
-(16, 6); -- assemble2: LHB Non-AC Assembly Out
+(16, 6), -- assemble2: LHB Non-AC Assembly Out
+(12, 7), (12, 8),   -- dispatch1: Local Outturn (both categories)
+(12, 9), (12, 10),  -- dispatch1: Lock & Seal (both categories)
+(12, 11), (12, 12), -- dispatch1: Railway Board Outturn (both categories)
+(12, 13), (12, 14); -- dispatch1: Physical Dispatch (both categories)
 
 -- ===================== Coach types =====================
 -- Codes/names match the legacy tbl_coach_types active rows for these categories.

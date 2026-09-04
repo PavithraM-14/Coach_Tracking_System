@@ -51,6 +51,34 @@ if ($currentUser['role'] === 'ADMIN') {
          JOIN coaches c ON c.id = aot.coach_id
          JOIN coach_types ct ON ct.id = c.coach_type_id
          JOIN users u ON u.id = aot.recorded_by_user_id)
+        UNION ALL
+        (SELECT 'LOCAL_OUTTURN', c.id, c.coach_number, ct.name,
+                lor.local_outturn_datetime, u.full_name, lor.remarks
+         FROM local_outturn_records lor
+         JOIN coaches c ON c.id = lor.coach_id
+         JOIN coach_types ct ON ct.id = c.coach_type_id
+         JOIN users u ON u.id = lor.recorded_by_user_id)
+        UNION ALL
+        (SELECT 'LOCK_SEAL', c.id, c.coach_number, ct.name,
+                lsr.lock_seal_datetime, u.full_name, lsr.remarks
+         FROM lock_seal_records lsr
+         JOIN coaches c ON c.id = lsr.coach_id
+         JOIN coach_types ct ON ct.id = c.coach_type_id
+         JOIN users u ON u.id = lsr.recorded_by_user_id)
+        UNION ALL
+        (SELECT 'BOARD_OUTTURN', c.id, c.coach_number, ct.name,
+                bor.board_outturn_datetime, u.full_name, bor.remarks
+         FROM board_outturn_records bor
+         JOIN coaches c ON c.id = bor.coach_id
+         JOIN coach_types ct ON ct.id = c.coach_type_id
+         JOIN users u ON u.id = bor.recorded_by_user_id)
+        UNION ALL
+        (SELECT 'PHYSICAL_DISPATCH', c.id, c.coach_number, ct.name,
+                pdr.dispatch_datetime, u.full_name, pdr.remarks
+         FROM physical_dispatch_records pdr
+         JOIN coaches c ON c.id = pdr.coach_id
+         JOIN coach_types ct ON ct.id = c.coach_type_id
+         JOIN users u ON u.id = pdr.recorded_by_user_id)
         ORDER BY occurred_at DESC
         LIMIT :limit
     ";
@@ -125,6 +153,48 @@ if ($currentUser['role'] === 'ADMIN') {
          LIMIT $limit"
     );
     $stmt->execute(['user_id1' => $currentUser['sub'], 'user_id2' => $currentUser['sub']]);
+} elseif ($currentUser['role'] === 'OUTTURN_DISPATCH') {
+    $stmt = $pdo->prepare(
+        "(SELECT 'LOCAL_OUTTURN' AS type, c.id AS coach_id, c.coach_number, ct.name AS coach_type,
+                 lor.local_outturn_datetime AS occurred_at, u.full_name AS performed_by, lor.remarks
+          FROM local_outturn_records lor
+          JOIN coaches c ON c.id = lor.coach_id
+          JOIN coach_types ct ON ct.id = c.coach_type_id
+          JOIN users u ON u.id = lor.recorded_by_user_id
+          WHERE lor.recorded_by_user_id = :user_id1)
+         UNION ALL
+         (SELECT 'LOCK_SEAL', c.id, c.coach_number, ct.name,
+                 lsr.lock_seal_datetime, u.full_name, lsr.remarks
+          FROM lock_seal_records lsr
+          JOIN coaches c ON c.id = lsr.coach_id
+          JOIN coach_types ct ON ct.id = c.coach_type_id
+          JOIN users u ON u.id = lsr.recorded_by_user_id
+          WHERE lsr.recorded_by_user_id = :user_id2)
+         UNION ALL
+         (SELECT 'BOARD_OUTTURN', c.id, c.coach_number, ct.name,
+                 bor.board_outturn_datetime, u.full_name, bor.remarks
+          FROM board_outturn_records bor
+          JOIN coaches c ON c.id = bor.coach_id
+          JOIN coach_types ct ON ct.id = c.coach_type_id
+          JOIN users u ON u.id = bor.recorded_by_user_id
+          WHERE bor.recorded_by_user_id = :user_id3)
+         UNION ALL
+         (SELECT 'PHYSICAL_DISPATCH', c.id, c.coach_number, ct.name,
+                 pdr.dispatch_datetime, u.full_name, pdr.remarks
+          FROM physical_dispatch_records pdr
+          JOIN coaches c ON c.id = pdr.coach_id
+          JOIN coach_types ct ON ct.id = c.coach_type_id
+          JOIN users u ON u.id = pdr.recorded_by_user_id
+          WHERE pdr.recorded_by_user_id = :user_id4)
+         ORDER BY occurred_at DESC
+         LIMIT $limit"
+    );
+    $stmt->execute([
+        'user_id1' => $currentUser['sub'],
+        'user_id2' => $currentUser['sub'],
+        'user_id3' => $currentUser['sub'],
+        'user_id4' => $currentUser['sub'],
+    ]);
 } else {
     Response::ok(['data' => []]);
 }

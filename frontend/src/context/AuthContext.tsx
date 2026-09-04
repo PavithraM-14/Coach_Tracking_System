@@ -10,7 +10,7 @@ const USER_KEY = "cts_user";
 // role's modules (e.g. PAINT: Paint In only, Paint Out only, or both, per
 // the Supervisor-Coach Assignments Matrix) — capabilities are fetched for
 // these roles only; everyone else gets an empty (unused) list.
-const CAPABILITY_ROLES: RoleCode[] = ["FURNISHING", "PAINT", "ASSEMBLY_PRODUCTION"];
+const CAPABILITY_ROLES: RoleCode[] = ["FURNISHING", "PAINT", "ASSEMBLY_PRODUCTION", "OUTTURN_DISPATCH"];
 
 interface AuthContextValue {
   user: CurrentUser | null;

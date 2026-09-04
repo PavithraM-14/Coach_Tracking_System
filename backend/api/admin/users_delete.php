@@ -37,6 +37,10 @@ $referenceChecks = [
     'paint_out_transactions' => 'recorded_by_user_id',
     'assembly_in_transactions' => 'recorded_by_user_id',
     'assembly_out_transactions' => 'recorded_by_user_id',
+    'local_outturn_records' => 'recorded_by_user_id',
+    'lock_seal_records' => 'recorded_by_user_id',
+    'board_outturn_records' => 'recorded_by_user_id',
+    'physical_dispatch_records' => 'recorded_by_user_id',
     'coach_assignments' => 'assigned_user_id',
 ];
 $hasHistory = false;
