@@ -468,7 +468,8 @@ function RecentActivity() {
 export function HomePage() {
   const { user, capabilities, capabilitiesLoading } = useAuth();
   const items = visibleNavItems(user?.role, capabilities);
-  const hasActivityFeed = user?.role && ["ADMIN", "SHELL_PRODUCTION", "FURNISHING", "PAINT"].includes(user.role);
+  const hasActivityFeed =
+    user?.role && ["ADMIN", "SHELL_PRODUCTION", "FURNISHING", "PAINT", "ASSEMBLY_PRODUCTION"].includes(user.role);
   // PAINT/ASSEMBLY_PRODUCTION have working modules, just not necessarily
   // configured for this specific login — different message than a role with
   // no module at all (e.g. MECHANICAL_INSPECTION, still unbuilt).

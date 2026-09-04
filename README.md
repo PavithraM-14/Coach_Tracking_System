@@ -176,7 +176,9 @@ bumped 10→30) now has a filter box above it that searches coach
 number/type/performer/type client-side; each non-Admin role's feed is scoped
 to work *they* recorded (`WHERE recorded_by_user_id = :user_id`) — Shell
 Production sees their own Shell Outturns, Furnishing sees their own
-Furnishing In records, Paint sees their own Paint Ins.
+Furnishing In records, Paint sees their own Paint In/Paint Out (whichever
+they're configured for), and Assembly Production sees their own Assembly
+In/Assembly Out.
 
 ## Furnishing In is a manual, skill-gated step
 
