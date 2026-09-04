@@ -65,6 +65,64 @@ INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id)
 (18, 'E1018', 'A. Saravanan',   'dispatch3',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12),
 (19, 'E1019', 'R. Elumalai',    'dispatch4',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12);
 
+-- Real Assembly Shop supervisors (Sr.Sec.Engr grade), sourced from the
+-- factory's cug employee directory: payunit '30A' (Assembly/Fur.) with
+-- scalecd '274' identifies this specific grade/section. employee_no is
+-- their real railway employee number. These populate the Assembly
+-- Assignments matrix with a realistic supervisor roster — none are
+-- pre-configured with matrix cells (that's Admin's job via the UI), except
+-- assemble1/assemble2 below which keep their existing In/Out config.
+INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id) VALUES
+(20, '694583', 'Amuda Ganesan S', 'amudag', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(21, '683788', 'Nachiappan N', 'nachiappann', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(22, '827809', 'Anandan C', 'anandanc', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(23, '821773', 'Jeyakrishna D V', 'jeyakrishnad', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(24, '771526', 'Venkatesan K', 'venkatesank', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(25, '789232', 'Satish Kumar B', 'satishk', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(26, '827497', 'Prabhakar', 'prabhakar', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(27, '802257', 'Suresh P', 'sureshp', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(28, '805634', 'Parthasarathy V', 'parthasarathyv', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(29, '785936', 'Jeyakumar J', 'jeyakumarj', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(30, '858795', 'Deepak S', 'deepaks', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(31, '841598', 'Vikas Oraon', 'vikaso', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(32, '825766', 'Madhankumar B', 'madhankumarb', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(33, '833555', 'Jayapal M', 'jayapalm', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(34, '835171', 'Suresh Selvakumar R', 'sureshs', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(35, '857143', 'Hariharan K', 'hariharank', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(36, '843868', 'Vijaya Kumar G', 'vijayak', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(37, '868740', 'Mohan Raj A', 'mohanr', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(38, '865119', 'John Marshall M', 'johnm', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(39, '865670', 'Suresh Kumar M', 'sureshk', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(40, '868774', 'Venkatesan T', 'venkatesant', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(41, '823437', 'Sundaramurthy S', 'sundaramurthys', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(42, '864941', 'Poornachandran B', 'poornachandranb', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(43, '864095', 'Satish Kumar G', 'satishk2', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(44, '865389', 'Ranjith K', 'ranjithk', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(45, '832350', 'Murugesan C', 'murugesanc', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(46, '831672', 'Periyasamy S', 'periyasamys', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(47, '855017', 'Prithu U N', 'prithuu', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(48, '856167', 'Ragul M', 'ragulm', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(49, '855236', 'Karthik H', 'karthikh', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(50, '852967', 'Natarajan R', 'natarajanr', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(51, '828764', 'Velmurugan S', 'velmurugans', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(52, '862428', 'Suresh Babu D', 'sureshb', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(53, '871383', 'Sivakumar N', 'sivakumarn', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(54, '890832', 'Annapureddy Abhishek Reddy', 'annapureddya', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(55, '881910', 'Prabhakaran A', 'prabhakarana', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(56, '884969', 'Saravanaselvan R', 'saravanaselvanr', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(57, '885291', 'Gautam Krishna U', 'gautamk', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(58, '885515', 'Ajith P S', 'ajithp', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(59, '885081', 'Gopinath S', 'gopinaths', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(60, '885072', 'Seran P', 'seranp', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(61, '885208', 'Venkat Nayak M', 'venkatn', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(62, '885216', 'Dharmendra', 'dharmendra', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(63, '805028', 'Sankara Gurunathan A', 'sankarag', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(64, '838006', 'Dusmanta Kumar Das', 'dusmantak', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(65, '853345', 'Vijai Ambedkar K', 'vijaia', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(66, '795659', 'Suresh C', 'sureshc', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(67, '802118', 'Bilal Mohamed M', 'bilalm', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(68, '858787', 'Yogha Sinivasa P', 'yoghas', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6);
+
 -- ===================== Plants =====================
 -- Matches the legacy BO reference's leading token (e.g. "FURN | 2025 | ...").
 
@@ -93,21 +151,16 @@ INSERT INTO coach_categories (id, code, name, sort_order, is_active) VALUES
 (2, '09', 'LHB NON-AC', 9, 1);
 
 -- ===================== Skills =====================
--- Skill = "can perform this OPERATION on this coach category". Only
--- FURNISHING_IN is live here — the assignment queue actually assigns work
--- for it. ASSEMBLY_OP skills can be created via Admin's Skill Master ahead
--- of that module being built. Paint does NOT use this table — it has its
--- own, finer-grained `paint_type_assignments` matrix below (per coach TYPE,
--- not category, with separate In/Out flags), configured via the Admin
--- "Supervisor-Coach Assignments Matrix" page.
+-- Skill = "can perform this OPERATION on this coach category". FURNISHING_IN
+-- and the four Outturn/Dispatch operations are live here. Paint and Assembly
+-- do NOT use this table for either direction — each has its own,
+-- finer-grained `*_type_assignments` matrix instead (per coach TYPE, not
+-- category, with separate In/Out flags), configured via the Admin
+-- "Supervisor-Coach Assignments Matrix" pages.
 
 INSERT INTO skills (id, name, operation, role_code, coach_category_id) VALUES
 (1, 'Furnishing In - LHB AC', 'FURNISHING_IN', 'FURNISHING', 1),
 (2, 'Furnishing In - LHB Non-AC', 'FURNISHING_IN', 'FURNISHING', 2),
-(3, 'Assembly In - LHB AC', 'ASSEMBLY_IN', 'ASSEMBLY_PRODUCTION', 1),
-(4, 'Assembly In - LHB Non-AC', 'ASSEMBLY_IN', 'ASSEMBLY_PRODUCTION', 2),
-(5, 'Assembly Out - LHB AC', 'ASSEMBLY_OUT', 'ASSEMBLY_PRODUCTION', 1),
-(6, 'Assembly Out - LHB Non-AC', 'ASSEMBLY_OUT', 'ASSEMBLY_PRODUCTION', 2),
 (7, 'Local Outturn - LHB AC', 'LOCAL_OUTTURN', 'OUTTURN_DISPATCH', 1),
 (8, 'Local Outturn - LHB Non-AC', 'LOCAL_OUTTURN', 'OUTTURN_DISPATCH', 2),
 (9, 'Lock & Seal - LHB AC', 'LOCK_SEAL', 'OUTTURN_DISPATCH', 1),
@@ -119,18 +172,14 @@ INSERT INTO skills (id, name, operation, role_code, coach_category_id) VALUES
 
 -- ===================== User skills =====================
 -- furnish1 covers both categories — every coach past Shell Outturn is
--- assigned to them, uncapped (see Assignment::MODULE_CAPACITY). Assembly and
--- Outturn/Dispatch both use the same split as Paint — one login per
--- direction/stage, each across both categories, uncapped (Furnishing-style,
--- no lines/capacity concept for these stages, unlike Paint/Assembly).
+-- assigned to them, uncapped (see Assignment::MODULE_CAPACITY).
+-- Outturn/Dispatch uses the same one-login-per-stage split as Paint/
+-- Assembly, each across both categories, uncapped (no lines/capacity
+-- concept for these four stages, unlike Paint/Assembly).
 
 INSERT INTO user_skills (user_id, skill_id) VALUES
 (4, 1),  -- furnish1: LHB AC Furnishing
 (4, 2),  -- furnish1: LHB Non-AC Furnishing
-(6, 3),  -- assemble1: LHB AC Assembly In
-(6, 4),  -- assemble1: LHB Non-AC Assembly In
-(16, 5), -- assemble2: LHB AC Assembly Out
-(16, 6), -- assemble2: LHB Non-AC Assembly Out
 (12, 7), (12, 8),   -- dispatch1: Local Outturn (both categories)
 (17, 9), (17, 10),  -- dispatch2: Lock & Seal (both categories)
 (18, 11), (18, 12), -- dispatch3: Railway Board Outturn (both categories)
@@ -157,6 +206,16 @@ INSERT INTO coach_types (id, code, name, category_id, is_lhb, is_active, sort_or
 INSERT INTO paint_type_assignments (user_id, coach_type_id, can_in, can_out) VALUES
 (5, 1, 1, 0), (5, 2, 1, 0), (5, 3, 1, 0), (5, 4, 1, 0), (5, 5, 1, 0), (5, 6, 1, 0), (5, 7, 1, 0), -- paint1: Paint In, all types
 (15, 1, 0, 1), (15, 2, 0, 1), (15, 3, 0, 1), (15, 4, 0, 1), (15, 5, 0, 1), (15, 6, 0, 1), (15, 7, 0, 1); -- paint2: Paint Out, all types
+
+-- ===================== Assembly type assignments (matrix) =====================
+-- Same structure as the Paint matrix above: assemble1 = Assembly In,
+-- assemble2 = Assembly Out, both across every seeded coach type. The 49 real
+-- supervisor logins seeded above are intentionally left unconfigured here —
+-- Admin assigns them coach types via /admin/assembly-assignments.
+
+INSERT INTO assembly_type_assignments (user_id, coach_type_id, can_in, can_out) VALUES
+(6, 1, 1, 0), (6, 2, 1, 0), (6, 3, 1, 0), (6, 4, 1, 0), (6, 5, 1, 0), (6, 6, 1, 0), (6, 7, 1, 0), -- assemble1: Assembly In, all types
+(16, 1, 0, 1), (16, 2, 0, 1), (16, 3, 0, 1), (16, 4, 0, 1), (16, 5, 0, 1), (16, 6, 0, 1), (16, 7, 0, 1); -- assemble2: Assembly Out, all types
 
 -- ===================== Fixed schedules =====================
 -- Admin-configured static day-counts (not predicted). shell_to_furnishing_days

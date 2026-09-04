@@ -5,24 +5,27 @@ require_once __DIR__ . '/Operations.php';
 // Coach assignment engine for every "who does the next action on this
 // coach" module in the pipeline: FURNISHING (Furnishing In), PAINT (Paint
 // In), PAINT_OUT (Paint Out), ASSEMBLY_IN (Assembly In), ASSEMBLY_OUT
-// (Assembly Out).
+// (Assembly Out), LOCAL_OUTTURN, LOCK_SEAL, BOARD_OUTTURN, PHYSICAL_DISPATCH.
 //
 // Two matching strategies coexist:
 // - SKILL_MODULES matches on `skills`/`user_skills` at coach CATEGORY
 //   granularity (LHB AC / LHB Non-AC), keyed by OPERATION (Operations::
 //   MODULE_OPERATION) and a role_code lookup (a module name doesn't always
-//   equal its role_code — ASSEMBLY_IN and ASSEMBLY_OUT are both performed by
-//   role ASSEMBLY_PRODUCTION).
-// - MATRIX_MODULES matches on `paint_type_assignments` at coach TYPE
-//   granularity (finer — e.g. LWCBAC, not just "LHB AC"), configured via the
-//   Admin "Paint Assignments" matrix, with independent can_in/can_out flags
-//   per (Paint employee, coach type) cell. Covers PAINT (can_in) and
-//   PAINT_OUT (can_out) — both roles are PAINT, only the flag differs.
+//   equal its role_code — e.g. all four Outturn/Dispatch stages are
+//   performed by role OUTTURN_DISPATCH).
+// - MATRIX_MODULES matches on a per-shop `*_type_assignments` table at coach
+//   TYPE granularity (finer — e.g. LWCBAC, not just "LHB AC"), configured
+//   via an Admin "Supervisor-Coach Assignments Matrix" page, with
+//   independent can_in/can_out flags per (employee, coach type) cell.
+//   MATRIX_TABLE/MATRIX_ROLE say which table and role each matrix module
+//   uses — PAINT/PAINT_OUT share `paint_type_assignments` (role PAINT),
+//   ASSEMBLY_IN/ASSEMBLY_OUT share `assembly_type_assignments` (role
+//   ASSEMBLY_PRODUCTION).
 //
-// Capacity is per-module: Furnishing In is done by a single employee in
-// practice, so it has NO cap. Every other module caps at 5 concurrent
-// ASSIGNED coaches per employee (parallel workers across lines) — beyond
-// that, a coach sits QUEUED.
+// Capacity is per-module: Furnishing In and the four Outturn/Dispatch
+// stages are done by a single employee in practice, so they have NO cap.
+// Every other module caps at 5 concurrent ASSIGNED coaches per employee
+// (parallel workers across lines) — beyond that, a coach sits QUEUED.
 class Assignment
 {
     const MODULE_CAPACITY = [
@@ -40,24 +43,54 @@ class Assignment
     /** module => role_code, for skills/user_skills-matched modules. */
     const SKILL_MODULES = [
         'FURNISHING' => 'FURNISHING',
-        'ASSEMBLY_IN' => 'ASSEMBLY_PRODUCTION',
-        'ASSEMBLY_OUT' => 'ASSEMBLY_PRODUCTION',
         'LOCAL_OUTTURN' => 'OUTTURN_DISPATCH',
         'LOCK_SEAL' => 'OUTTURN_DISPATCH',
         'BOARD_OUTTURN' => 'OUTTURN_DISPATCH',
         'PHYSICAL_DISPATCH' => 'OUTTURN_DISPATCH',
     ];
 
-    /** module => paint_type_assignments flag column, for matrix-matched modules. */
+    /** module => flag column, for matrix-matched modules. */
     const MATRIX_MODULES = [
         'PAINT' => 'can_in',
         'PAINT_OUT' => 'can_out',
+        'ASSEMBLY_IN' => 'can_in',
+        'ASSEMBLY_OUT' => 'can_out',
+    ];
+
+    /** module => the *_type_assignments table that module reads/writes. */
+    const MATRIX_TABLE = [
+        'PAINT' => 'paint_type_assignments',
+        'PAINT_OUT' => 'paint_type_assignments',
+        'ASSEMBLY_IN' => 'assembly_type_assignments',
+        'ASSEMBLY_OUT' => 'assembly_type_assignments',
+    ];
+
+    /** module => role_code, for matrix-matched modules. */
+    const MATRIX_ROLE = [
+        'PAINT' => 'PAINT',
+        'PAINT_OUT' => 'PAINT',
+        'ASSEMBLY_IN' => 'ASSEMBLY_PRODUCTION',
+        'ASSEMBLY_OUT' => 'ASSEMBLY_PRODUCTION',
     ];
 
     /** Null means unlimited. */
     public static function capacityFor(string $module): ?int
     {
         return self::MODULE_CAPACITY[$module] ?? null;
+    }
+
+    /** Whitelists a matrix table name — never interpolate unvalidated input into SQL. */
+    private static function matrixTable(string $module): string
+    {
+        $table = self::MATRIX_TABLE[$module] ?? '';
+        return in_array($table, ['paint_type_assignments', 'assembly_type_assignments'], true)
+            ? $table
+            : 'paint_type_assignments';
+    }
+
+    private static function matrixFlagColumn(string $module): string
+    {
+        return (self::MATRIX_MODULES[$module] ?? '') === 'can_out' ? 'can_out' : 'can_in';
     }
 
     /**
@@ -88,16 +121,18 @@ class Assignment
             }
         }
 
-        if ($roleCode === 'PAINT') {
-            foreach (self::MATRIX_MODULES as $module => $flagColumn) {
-                $flagColumn = $flagColumn === 'can_out' ? 'can_out' : 'can_in'; // whitelist
-                $stmt = $pdo->prepare(
-                    "SELECT 1 FROM paint_type_assignments WHERE user_id = :user_id AND $flagColumn = 1 LIMIT 1"
-                );
-                $stmt->execute(['user_id' => $userId]);
-                if ($stmt->fetch()) {
-                    $capable[] = $module;
-                }
+        foreach (self::MATRIX_MODULES as $module => $flagColumn) {
+            if ((self::MATRIX_ROLE[$module] ?? null) !== $roleCode) {
+                continue;
+            }
+            $table = self::matrixTable($module);
+            $flagColumn = self::matrixFlagColumn($module);
+            $stmt = $pdo->prepare(
+                "SELECT 1 FROM `$table` WHERE user_id = :user_id AND $flagColumn = 1 LIMIT 1"
+            );
+            $stmt->execute(['user_id' => $userId]);
+            if ($stmt->fetch()) {
+                $capable[] = $module;
             }
         }
 
@@ -115,7 +150,7 @@ class Assignment
     {
         $capacity = self::capacityFor($module);
         $candidate = isset(self::MATRIX_MODULES[$module])
-            ? self::leastLoadedMatrixCandidate($pdo, $coachId, $module, self::MATRIX_MODULES[$module], $capacity)
+            ? self::leastLoadedMatrixCandidate($pdo, $coachId, $module, $capacity)
             : self::leastLoadedSkillCandidate($pdo, $coachId, $module, $capacity);
 
         $insert = $pdo->prepare(
@@ -180,14 +215,16 @@ class Assignment
         return $candidate ? (int) $candidate['id'] : null;
     }
 
-    /** $flagColumn is 'can_in' or 'can_out' — which paint_type_assignments column must be 1. */
-    private static function leastLoadedMatrixCandidate(PDO $pdo, int $coachId, string $module, string $flagColumn, ?int $capacity): ?int
+    private static function leastLoadedMatrixCandidate(PDO $pdo, int $coachId, string $module, ?int $capacity): ?int
     {
         $coachTypeId = self::coachTypeId($pdo, $coachId);
-        $flagColumn = $flagColumn === 'can_out' ? 'can_out' : 'can_in'; // whitelist, never interpolate raw input
+        $table = self::matrixTable($module);
+        $flagColumn = self::matrixFlagColumn($module);
+        $roleCode = self::MATRIX_ROLE[$module];
 
         $params = [
             'module_sub' => $module,
+            'role_code' => $roleCode,
             'coach_type_id' => $coachTypeId,
         ];
         $havingClause = '';
@@ -202,9 +239,9 @@ class Assignment
                      WHERE ca.assigned_user_id = u.id AND ca.module = :module_sub AND ca.status = 'ASSIGNED') AS load_count
              FROM users u
              JOIN roles r ON r.id = u.role_id
-             JOIN paint_type_assignments pta ON pta.user_id = u.id
-             WHERE r.code = 'PAINT' AND u.is_active = 1
-               AND pta.coach_type_id = :coach_type_id AND pta.$flagColumn = 1
+             JOIN `$table` mta ON mta.user_id = u.id
+             WHERE r.code = :role_code AND u.is_active = 1
+               AND mta.coach_type_id = :coach_type_id AND mta.$flagColumn = 1
              GROUP BY u.id
              $havingClause
              ORDER BY load_count ASC, u.id ASC
@@ -217,9 +254,9 @@ class Assignment
 
     /**
      * Called when the employee performs the action (Furnishing In / Paint In
-     * / Paint Out / Assembly In / Assembly Out created) for a coach. Marks
-     * their assignment COMPLETED, then pulls the next matching QUEUED coach
-     * (if any) into their now-freed capacity.
+     * / Paint Out / Assembly In / Assembly Out / ... created) for a coach.
+     * Marks their assignment COMPLETED, then pulls the next matching QUEUED
+     * coach (if any) into their now-freed capacity.
      */
     public static function complete(PDO $pdo, int $coachId, string $module): void
     {
@@ -266,7 +303,7 @@ class Assignment
             }
 
             $nextId = isset(self::MATRIX_MODULES[$module])
-                ? self::nextQueuedMatrixAssignment($pdo, $userId, $module, self::MATRIX_MODULES[$module])
+                ? self::nextQueuedMatrixAssignment($pdo, $userId, $module)
                 : self::nextQueuedSkillAssignment($pdo, $userId, $module);
             if (!$nextId) {
                 return;
@@ -298,14 +335,15 @@ class Assignment
         return $row ? (int) $row['id'] : null;
     }
 
-    private static function nextQueuedMatrixAssignment(PDO $pdo, int $userId, string $module, string $flagColumn): ?int
+    private static function nextQueuedMatrixAssignment(PDO $pdo, int $userId, string $module): ?int
     {
-        $flagColumn = $flagColumn === 'can_out' ? 'can_out' : 'can_in'; // whitelist, never interpolate raw input
+        $table = self::matrixTable($module);
+        $flagColumn = self::matrixFlagColumn($module);
         $stmt = $pdo->prepare(
             "SELECT ca.id
              FROM coach_assignments ca
              JOIN coaches c ON c.id = ca.coach_id
-             JOIN paint_type_assignments pta ON pta.user_id = :user_id AND pta.coach_type_id = c.coach_type_id AND pta.$flagColumn = 1
+             JOIN `$table` mta ON mta.user_id = :user_id AND mta.coach_type_id = c.coach_type_id AND mta.$flagColumn = 1
              WHERE ca.module = :module2 AND ca.status = 'QUEUED'
              ORDER BY ca.created_at ASC
              LIMIT 1"

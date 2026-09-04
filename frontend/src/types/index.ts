@@ -40,8 +40,6 @@ export interface AdminUserRow {
 
 export type OperationCode =
   | "FURNISHING_IN"
-  | "ASSEMBLY_IN"
-  | "ASSEMBLY_OUT"
   | "LOCAL_OUTTURN"
   | "LOCK_SEAL"
   | "BOARD_OUTTURN"

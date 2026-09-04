@@ -428,6 +428,23 @@ CREATE TABLE paint_type_assignments (
   FOREIGN KEY (coach_type_id) REFERENCES coach_types(id)
 );
 
+-- Same matrix, Assembly Shop: which Assembly Production employee handles
+-- Assembly In / Assembly Out for which coach TYPE. Replaces the earlier
+-- category-level `skills` approach for Assembly (ASSEMBLY_IN/ASSEMBLY_OUT
+-- skills are no longer read by Assignment.php) with the same finer-grained,
+-- matrix-based model Paint already uses — Assignment::assignOrQueue()
+-- branches 'ASSEMBLY_IN' -> can_in, 'ASSEMBLY_OUT' -> can_out on this table.
+CREATE TABLE assembly_type_assignments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  coach_type_id INT NOT NULL,
+  can_in TINYINT(1) NOT NULL DEFAULT 0,
+  can_out TINYINT(1) NOT NULL DEFAULT 0,
+  UNIQUE KEY uq_user_type (user_id, coach_type_id),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (coach_type_id) REFERENCES coach_types(id)
+);
+
 -- Forgot Password: a row per OTP request. The OTP itself is never stored in
 -- plaintext (bcrypt-hashed like login passwords). `reset_token` is only set
 -- once the OTP has been verified, and is the single-use credential the final

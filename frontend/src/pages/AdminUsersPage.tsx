@@ -14,17 +14,16 @@ import { ApiError } from "../api/client";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { useAuth } from "../context/AuthContext";
 
-// No PAINT here: Paint moved to its own coach-type-level In/Out matrix (see
-// Admin > Paint Assignments) instead of this category-level skill checkbox
-// model — keeping both would let the two disagree about who's eligible.
-const SKILL_ROLE_CODES = ["FURNISHING", "ASSEMBLY_PRODUCTION", "OUTTURN_DISPATCH"] as const;
+// No PAINT or ASSEMBLY_PRODUCTION here: both moved to their own coach-type-
+// level In/Out matrix (see Admin > Paint Assignments / Assembly
+// Assignments) instead of this category-level skill checkbox model —
+// keeping both would let the two disagree about who's eligible.
+const SKILL_ROLE_CODES = ["FURNISHING", "OUTTURN_DISPATCH"] as const;
 
 // Mirrors backend/lib/Operations.php — a skill is "can perform this operation
 // on this coach category", not just a role/category tag.
 const OPERATIONS: Array<{ code: OperationCode; label: string; live: boolean }> = [
   { code: "FURNISHING_IN", label: "Furnishing In", live: true },
-  { code: "ASSEMBLY_IN", label: "Assembly In", live: true },
-  { code: "ASSEMBLY_OUT", label: "Assembly Out", live: true },
   { code: "LOCAL_OUTTURN", label: "Local Outturn", live: true },
   { code: "LOCK_SEAL", label: "Lock & Seal", live: true },
   { code: "BOARD_OUTTURN", label: "Railway Board Outturn", live: true },

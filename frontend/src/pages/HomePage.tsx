@@ -414,13 +414,26 @@ function AssemblyStats({ capabilities }: { capabilities: string[] }) {
   );
 }
 
+// Records recorded in the last 7 days (inclusive of today) — a trend signal
+// distinct from "today" and "all-time total", computed client-side from the
+// same list response rather than a separate API call.
+function withinLastWeek(dateStr: string): boolean {
+  const recorded = new Date(dateStr.slice(0, 10) + "T00:00:00");
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 6);
+  cutoff.setHours(0, 0, 0, 0);
+  return recorded >= cutoff;
+}
+
 // The four final stages have no line/slot grid (unlike Paint/Assembly), so
-// their dashboard cards drop the "Available Slots" tile — just Awaiting /
-// Done Today / Total Records, same reasoning as Furnishing's simpler model.
+// their dashboard cards drop the "Available Slots" tile in favor of a
+// "This Week" trend tile — Awaiting / Today / This Week / Total, same
+// reasoning as Furnishing's simpler model.
 function LocalOutturnStats() {
   const [awaiting, setAwaiting] = useState<number | null>(null);
   const [totalRecords, setTotalRecords] = useState<number | null>(null);
   const [doneToday, setDoneToday] = useState<number | null>(null);
+  const [thisWeek, setThisWeek] = useState<number | null>(null);
 
   useEffect(() => {
     getLocalOutturnWorklist().then((res) => setAwaiting(res.data.length));
@@ -428,6 +441,7 @@ function LocalOutturnStats() {
       const todayStr = new Date().toLocaleDateString("en-CA");
       setTotalRecords(res.data.length);
       setDoneToday(res.data.filter((r) => r.local_outturn_datetime.slice(0, 10) === todayStr).length);
+      setThisWeek(res.data.filter((r) => withinLastWeek(r.local_outturn_datetime)).length);
     });
   }, []);
 
@@ -435,6 +449,7 @@ function LocalOutturnStats() {
     <StatGrid>
       <StatCard icon={Clock} color="amber" label="Awaiting Local Outturn" value={awaiting ?? "…"} description="Assembly Out done, pending allocation" to="/local-outturn" />
       <StatCard icon={ClipboardList} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Local Outturn recorded today" to="/local-outturn/history?today=1" />
+      <StatCard icon={ClipboardCheck} color="purple" label="This Week" value={thisWeek ?? "…"} description="Local Outturn recorded, last 7 days" to="/local-outturn/history" />
       <StatCard icon={ClipboardCheck} color="blue" label="Total Local Outturn Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/local-outturn/history" />
     </StatGrid>
   );
@@ -444,6 +459,7 @@ function LockSealStats() {
   const [awaiting, setAwaiting] = useState<number | null>(null);
   const [totalRecords, setTotalRecords] = useState<number | null>(null);
   const [doneToday, setDoneToday] = useState<number | null>(null);
+  const [thisWeek, setThisWeek] = useState<number | null>(null);
 
   useEffect(() => {
     getLockSealWorklist().then((res) => setAwaiting(res.data.length));
@@ -451,6 +467,7 @@ function LockSealStats() {
       const todayStr = new Date().toLocaleDateString("en-CA");
       setTotalRecords(res.data.length);
       setDoneToday(res.data.filter((r) => r.lock_seal_datetime.slice(0, 10) === todayStr).length);
+      setThisWeek(res.data.filter((r) => withinLastWeek(r.lock_seal_datetime)).length);
     });
   }, []);
 
@@ -458,7 +475,8 @@ function LockSealStats() {
     <StatGrid>
       <StatCard icon={Clock} color="amber" label="Awaiting Lock & Seal" value={awaiting ?? "…"} description="Local Outturn done, pending allocation" to="/lock-seal" />
       <StatCard icon={Lock} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Lock & Seal recorded today" to="/lock-seal/history?today=1" />
-      <StatCard icon={Lock} color="purple" label="Total Lock & Seal Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/lock-seal/history" />
+      <StatCard icon={Lock} color="purple" label="This Week" value={thisWeek ?? "…"} description="Lock & Seal recorded, last 7 days" to="/lock-seal/history" />
+      <StatCard icon={Lock} color="green" label="Total Lock & Seal Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/lock-seal/history" />
     </StatGrid>
   );
 }
@@ -467,6 +485,7 @@ function BoardOutturnStats() {
   const [awaiting, setAwaiting] = useState<number | null>(null);
   const [totalRecords, setTotalRecords] = useState<number | null>(null);
   const [doneToday, setDoneToday] = useState<number | null>(null);
+  const [thisWeek, setThisWeek] = useState<number | null>(null);
 
   useEffect(() => {
     getBoardOutturnWorklist().then((res) => setAwaiting(res.data.length));
@@ -474,6 +493,7 @@ function BoardOutturnStats() {
       const todayStr = new Date().toLocaleDateString("en-CA");
       setTotalRecords(res.data.length);
       setDoneToday(res.data.filter((r) => r.board_outturn_datetime.slice(0, 10) === todayStr).length);
+      setThisWeek(res.data.filter((r) => withinLastWeek(r.board_outturn_datetime)).length);
     });
   }, []);
 
@@ -481,6 +501,7 @@ function BoardOutturnStats() {
     <StatGrid>
       <StatCard icon={Clock} color="amber" label="Awaiting Board Outturn" value={awaiting ?? "…"} description="Lock & Seal done, pending allocation" to="/board-outturn" />
       <StatCard icon={Landmark} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Railway Board Outturn recorded today" to="/board-outturn/history?today=1" />
+      <StatCard icon={Landmark} color="purple" label="This Week" value={thisWeek ?? "…"} description="Board Outturn recorded, last 7 days" to="/board-outturn/history" />
       <StatCard icon={Landmark} color="green" label="Total Board Outturn Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/board-outturn/history" />
     </StatGrid>
   );
@@ -490,6 +511,7 @@ function PhysicalDispatchStats() {
   const [awaiting, setAwaiting] = useState<number | null>(null);
   const [totalRecords, setTotalRecords] = useState<number | null>(null);
   const [doneToday, setDoneToday] = useState<number | null>(null);
+  const [thisWeek, setThisWeek] = useState<number | null>(null);
 
   useEffect(() => {
     getPhysicalDispatchWorklist().then((res) => setAwaiting(res.data.length));
@@ -497,6 +519,7 @@ function PhysicalDispatchStats() {
       const todayStr = new Date().toLocaleDateString("en-CA");
       setTotalRecords(res.data.length);
       setDoneToday(res.data.filter((r) => r.dispatch_datetime.slice(0, 10) === todayStr).length);
+      setThisWeek(res.data.filter((r) => withinLastWeek(r.dispatch_datetime)).length);
     });
   }, []);
 
@@ -504,6 +527,7 @@ function PhysicalDispatchStats() {
     <StatGrid>
       <StatCard icon={Clock} color="amber" label="Awaiting Dispatch" value={awaiting ?? "…"} description="Board Outturn done, pending allocation" to="/physical-dispatch" />
       <StatCard icon={Truck} color="indigo" label="Dispatched Today" value={doneToday ?? "…"} description="Physical Dispatch recorded today" to="/physical-dispatch/history?today=1" />
+      <StatCard icon={Truck} color="purple" label="This Week" value={thisWeek ?? "…"} description="Dispatched, last 7 days" to="/physical-dispatch/history" />
       <StatCard icon={Truck} color="blue" label="Total Dispatch Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/physical-dispatch/history" />
     </StatGrid>
   );

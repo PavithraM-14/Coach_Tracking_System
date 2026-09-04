@@ -43,6 +43,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/production-orders", label: "Production Orders", icon: FileText, roles: ["ADMIN"] },
   { to: "/admin/users", label: "User Management", icon: Users, roles: ["ADMIN"] },
   { to: "/admin/paint-assignments", label: "Paint Assignments", icon: LayoutGrid, roles: ["ADMIN"] },
+  { to: "/admin/assembly-assignments", label: "Assembly Assignments", icon: LayoutGrid, roles: ["ADMIN"] },
   { to: "/line-management", label: "Line Management", icon: Layers, roles: ["ADMIN"] },
   { to: "/shell-production", label: "Shell Production", icon: Factory, roles: ["SHELL_PRODUCTION"] },
   { to: "/shell-outturn", label: "Shell Outturn", icon: ClipboardCheck, roles: ["SHELL_PRODUCTION"] },

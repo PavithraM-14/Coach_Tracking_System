@@ -32,17 +32,20 @@ $assignedStmt = $pdo->prepare(
 $assignedStmt->execute(['user_id' => $currentUser['sub'], 'module' => $module]);
 $assignedCount = (int) $assignedStmt->fetchColumn();
 
-// Queued coaches this user is eligible for. PAINT/PAINT_OUT match on the
-// paint_type_assignments matrix at coach-type granularity; every other
-// module matches on skills/user_skills at coach-category granularity (see
-// Assignment.php).
+// Queued coaches this user is eligible for. PAINT/PAINT_OUT/ASSEMBLY_IN/
+// ASSEMBLY_OUT match on a *_type_assignments matrix at coach-type
+// granularity; every other module matches on skills/user_skills at
+// coach-category granularity (see Assignment.php).
 if (isset(Assignment::MATRIX_MODULES[$module])) {
     $flagColumn = Assignment::MATRIX_MODULES[$module] === 'can_out' ? 'can_out' : 'can_in';
+    $table = in_array(Assignment::MATRIX_TABLE[$module] ?? '', ['paint_type_assignments', 'assembly_type_assignments'], true)
+        ? Assignment::MATRIX_TABLE[$module]
+        : 'paint_type_assignments';
     $queuedStmt = $pdo->prepare(
         "SELECT COUNT(DISTINCT ca.id)
          FROM coach_assignments ca
          JOIN coaches c ON c.id = ca.coach_id
-         JOIN paint_type_assignments pta ON pta.user_id = :user_id AND pta.coach_type_id = c.coach_type_id AND pta.$flagColumn = 1
+         JOIN `$table` mta ON mta.user_id = :user_id AND mta.coach_type_id = c.coach_type_id AND mta.$flagColumn = 1
          WHERE ca.module = :module2 AND ca.status = 'QUEUED'"
     );
     $queuedStmt->execute(['user_id' => $currentUser['sub'], 'module2' => $module]);

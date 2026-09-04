@@ -22,6 +22,7 @@ import { AssemblyInHistoryPage } from "./pages/AssemblyInHistoryPage";
 import { AssemblyOutPage } from "./pages/AssemblyOutPage";
 import { AssemblyOutHistoryPage } from "./pages/AssemblyOutHistoryPage";
 import { PaintAssignmentMatrixPage } from "./pages/PaintAssignmentMatrixPage";
+import { AssemblyAssignmentMatrixPage } from "./pages/AssemblyAssignmentMatrixPage";
 import { CoachDetailPage } from "./pages/CoachDetailPage";
 import { LocalOutturnPage } from "./pages/LocalOutturnPage";
 import { LocalOutturnHistoryPage } from "./pages/LocalOutturnHistoryPage";
@@ -132,6 +133,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["ADMIN"]}>
                         <PaintAssignmentMatrixPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/assembly-assignments"
+                    element={
+                      <ProtectedRoute allowedRoles={["ADMIN"]}>
+                        <AssemblyAssignmentMatrixPage />
                       </ProtectedRoute>
                     }
                   />

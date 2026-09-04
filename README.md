@@ -50,8 +50,8 @@ role. All share the password `Passw0rd!`.
 | furnish1    | FURNISHING                    | Yes — Furnishing In (skills: LHB AC + Non-AC) — the only Furnishing login; every coach past Shell Outturn is assigned to them, uncapped |
 | paint1      | PAINT                         | Yes — Paint In (`/paint-in`, full allocation; matrix: Paint In, all coach types) |
 | paint2      | PAINT                         | Yes — Paint Out (`/paint-out`, full allocation; matrix: Paint Out, all coach types) |
-| assemble1   | ASSEMBLY_PRODUCTION           | Yes — Assembly In only (`/assembly-in`; skills: LHB AC + Non-AC Assembly In) |
-| assemble2   | ASSEMBLY_PRODUCTION           | Yes — Assembly Out only (`/assembly-out`; skills: LHB AC + Non-AC Assembly Out) |
+| assemble1   | ASSEMBLY_PRODUCTION           | Yes — Assembly In only (`/assembly-in`; matrix: Assembly In, all coach types) |
+| assemble2   | ASSEMBLY_PRODUCTION           | Yes — Assembly Out only (`/assembly-out`; matrix: Assembly Out, all coach types) |
 | mechinsp1   | MECHANICAL_INSPECTION         | Login only |
 | elecinsp1   | ELECTRICAL_INSPECTION         | Login only |
 | shunt1      | SHUNTING_STAFF                | Login only |
@@ -218,6 +218,12 @@ ten stages, Shell Outturn through Physical Dispatch, with the Admin coach
 detail drill-down (`/admin/coaches/:id`) correctly showing all ten in its
 workflow stepper and history, remarks included.
 
+Each stage's dashboard has 4 tiles (no "Available Slots" tile, unlike
+Paint/Assembly — no line/slot grid here): **Awaiting** (prior stage done,
+not yet this one), **Recorded Today**, **This Week** (last 7 days,
+client-computed from the same list response — a trend signal distinct from
+"today" and "all-time"), and **Total Records**.
+
 ## Furnishing In is a manual, skill-gated step
 
 Shell Outturn does **not** auto-create the Furnishing In record. Submitting
@@ -289,40 +295,77 @@ walked through Shell Outturn → Furnishing In → Paint In (paint1) → Paint O
 submission correctly routing the coach to the next stage's assigned
 employee.
 
-## Supervisor-Coach Assignments (In-Out) Matrix — Paint only
+## Supervisor-Coach Assignments (In-Out) Matrix — Paint and Assembly
 
-`/admin/paint-assignments` (Admin only) — a grid of coach type (row) ×
-Paint employee (column), each cell an independent **IN** / **OUT** toggle
-(green = can do Paint In for that type, red = can do Paint Out — both live).
-Row actions (`All IN` / `All OUT` / `Both` / clear) and column actions
-(bulk-set one employee's whole row) speed up configuring many cells at once;
-**Save** replaces the entire `paint_type_assignments` table with the current
-grid state in one request
-(`backend/api/admin/paint_type_assignments_save.php`) — simpler and safer
-than diffing, since the whole grid is always submitted together.
+Two near-identical Admin-only matrix pages, one per shop: `/admin/paint-assignments`
+(Paint) and `/admin/assembly-assignments` (Assembly). Each is a grid of
+coach type (row) × employee (column), with each cell an independent **IN**
+/ **OUT** toggle (green = can do the In direction for that type, red = can
+do Out). Row actions (`All IN` / `All OUT` / `Both` / clear) and column
+actions (bulk-set one employee's whole row) speed up configuring many cells
+at once; **Save** replaces the entire underlying table with the current
+grid state in one request — simpler and safer than diffing, since the whole
+grid is always submitted together.
 
-This replaced Paint's old category-level Skill Master entry entirely (no
-more "Paint In - LHB AC" style skills) — Furnishing/Assembly are untouched
-and still use the plain skill checkboxes (see the Skill Master section
-below — "Assembly In"/"Assembly Out" are now selectable operations there,
-replacing the old placeholder "Assembly Operation"). Demo config: **paint1 =
-Paint In**, **paint2 = Paint Out**, both across every coach type — verified
-live end-to-end (see previous section).
+Assembly's matrix (`assembly_type_assignments`, `backend/api/admin/
+assembly_type_assignments_{list,save}.php`, `AssemblyAssignmentMatrixPage.tsx`)
+is a straight copy of Paint's — same shape, same save-the-whole-grid
+semantics, same frontend component structure — just pointed at a different
+table/role. `Assignment.php` was generalized to support this: `MATRIX_TABLE`
+and `MATRIX_ROLE` now say which table (`paint_type_assignments` vs
+`assembly_type_assignments`) and role (`PAINT` vs `ASSEMBLY_PRODUCTION`)
+each matrix module (`PAINT`/`PAINT_OUT`/`ASSEMBLY_IN`/`ASSEMBLY_OUT`) uses,
+so `leastLoadedMatrixCandidate()`/`nextQueuedMatrixAssignment()` work
+against either table through one code path (the table name is whitelisted
+against the two known values before being interpolated — never raw input).
 
-A Paint employee (`/paint-in` or `/paint-out`) sees only their own assigned
-coaches and that stage's line/slot grid, nothing else. Admin sees the full
-4-tab overview instead (see "Layout" above).
+This replaced Assembly's old category-level Skill Master entry entirely
+(no more "Assembly In - LHB AC" style skills, mirroring what already
+happened to Paint) — the `ASSEMBLY_IN`/`ASSEMBLY_OUT` skill rows and
+assemble1/assemble2's grants were deleted; Furnishing and the four
+Outturn/Dispatch stages are untouched and still use the plain skill
+checkboxes. Demo config: **paint1 = Paint In**, **paint2 = Paint Out**,
+**assemble1 = Assembly In**, **assemble2 = Assembly Out**, each across
+every coach type — verified live end-to-end: a coach walked through Paint
+In (paint1) -> Paint Out (paint2) -> Assembly In (assemble1) -> Assembly
+Out (assemble2), confirmed via direct DB query that each `coach_assignments`
+row landed on the right employee through the new matrix path.
+
+A Paint/Assembly employee (`/paint-in`, `/paint-out`, `/assembly-in`,
+`/assembly-out`) sees only their own assigned coaches and that stage's
+line/slot grid, nothing else. Admin sees the full 4-tab Line Management
+overview instead (see "Layout" above).
+
+## Real Assembly Shop supervisor roster
+
+The Assembly matrix's employee pool includes 49 real Assembly Shop
+supervisors (Sr.Sec.Engr grade), sourced from the factory's `cug` employee
+directory dump: rows with `payunit = '30A'` (office "Assembly/Fur.") and
+`scalecd = '274'` identify this exact grade/section (the same pattern
+identifies Paint Shop's supervisors via `payunit = '54A'`). Each became a
+regular `ASSEMBLY_PRODUCTION` login — real `empno` as `employee_no`, real
+name as `full_name`, a username generated from the name (lowercased,
+punctuation stripped, deduplicated on collision, e.g. "AMUDA GANESAN.S" ->
+`amudag`) — password `Passw0rd!` like every other demo account. They're
+seeded with **no matrix cells configured**, appearing as empty columns
+Admin can assign coach types to via the UI, same as a real rollout would
+work. `seed.sql` mirrors this so a fresh import matches the live dev
+database; the (idempotent, `INSERT ... WHERE NOT EXISTS`) migration script
+used to generate them lived in the session scratchpad, not the repo, since
+it's a one-time data-import tool rather than app code.
 
 ## Per-employee stage access (Paint In vs. Paint Out, Assembly In vs. Assembly Out)
 
 A role can now cover more than one pipeline stage (PAINT: Paint In *and*
-Paint Out; ASSEMBLY_PRODUCTION: Assembly In *and* Assembly Out), but a given
-**login** is not automatically capable of all of them — separate employees
-are meant to handle separate directions (e.g. paint1 only does Paint In,
-paint2 only does Paint Out), driven entirely by whether that employee has a
-matrix cell (`paint_type_assignments.can_in`/`can_out`) or a skill
-(`ASSEMBLY_IN`/`ASSEMBLY_OUT`) for at least one coach type/category — not by
-their role alone.
+Paint Out; ASSEMBLY_PRODUCTION: Assembly In *and* Assembly Out; and
+similarly the four Outturn/Dispatch stages under OUTTURN_DISPATCH), but a
+given **login** is not automatically capable of all of them — separate
+employees are meant to handle separate directions/stages (e.g. paint1 only
+does Paint In, paint2 only does Paint Out; assemble1/assemble2 likewise),
+driven entirely by whether that employee has a matrix cell
+(`paint_type_assignments`/`assembly_type_assignments` `can_in`/`can_out`)
+or a skill (Furnishing In, or one of the four Outturn/Dispatch operations)
+for at least one coach type/category — not by their role alone.
 
 `GET /api/assignments/my-capabilities.php` (`Assignment::userCapableModules()`)
 returns the list of modules the *logged-in employee specifically* is
@@ -409,9 +452,10 @@ stored).
 The doc's Admin responsibility is "create/maintain skill master **and**
 assign skills to users" — we'd only built the second half. `admin/users.php`
 now has a **Skill Master** section (`POST /api/admin/skills_create.php`):
-name + operation (Furnishing In / Assembly In / Assembly Out — Paint uses
-its own matrix instead, see above) + coach category, backed by the `skills`
-table. This meant relaxing `skills`' unique constraint from
+name + operation (Furnishing In, or one of the four Outturn/Dispatch
+operations — Paint and Assembly both use their own type-matrix instead,
+see above) + coach category, backed by the `skills` table. This meant
+relaxing `skills`' unique constraint from
 `(role_code, coach_category_id)` to `(role_code, coach_category_id, name)` —
 multiple distinct skills can now cover the same role+category (e.g. two
 different Furnishing skills both scoped to LHB AC); the assignment-queue

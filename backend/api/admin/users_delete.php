@@ -68,6 +68,7 @@ try {
     // Matrix config, not audit history — safe to clear on a user with zero
     // recorded work (the referenceChecks above already ruled out real history).
     $pdo->prepare('DELETE FROM paint_type_assignments WHERE user_id = :id')->execute(['id' => $userId]);
+    $pdo->prepare('DELETE FROM assembly_type_assignments WHERE user_id = :id')->execute(['id' => $userId]);
     $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $userId]);
     $pdo->commit();
 } catch (Throwable $e) {
