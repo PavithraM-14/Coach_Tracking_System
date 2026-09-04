@@ -309,6 +309,41 @@ Demo config: **assemble1 = Assembly In only**, **assemble2 = Assembly Out
 only** — the same one-login-per-direction split as paint1/paint2, verified
 live (assemble1's sidebar has no "Assembly Out" link, and vice versa).
 
+## Coach detail drill-down (Admin)
+
+Every row in Admin's **Recent Activity** feed is now a link to
+`/admin/coaches/:coachId` — a full pipeline snapshot for that specific
+coach, not just the one action that happened to show up in the feed.
+
+- `GET /api/admin/coach_detail.php?coach_id=` (Admin only) queries all six
+  transaction tables for that coach and returns: coach/BO info, a computed
+  **current location** (which stage it's waiting on and who it's
+  `ASSIGNED`/`QUEUED` to, via the same `coach_assignments` data the
+  assignment engine uses — or `COMPLETED` once Assembly Out is done), the
+  six-stage **workflow stepper** state (done/current/pending), and the full
+  **history** in pipeline order, each entry carrying its recorded-by user,
+  timestamp, line/slot location where applicable, and **remarks**.
+- The frontend (`CoachDetailPage.tsx`) renders this as three sections: a
+  Coach Information card, a Current Location card, a horizontal workflow
+  stepper (green = done, blue outline = current, gray = pending), and a
+  History list.
+- `recent-activity.php` was extended to cover all six stages (it previously
+  only had Shell Outturn/Furnishing In/Paint In) and now returns `coach_id`
+  and `remarks` per row — both needed for the drill-down link and, for
+  Paint/Assembly roles, so their own feed also spans both directions of
+  their role (Paint: Paint In + Paint Out; Assembly: Assembly In + Assembly
+  Out), not just the first one.
+- **Bug fix while building this**: `furnishing_in_records` never had a
+  `remarks` column — the Furnishing In form collected it and `create.php`
+  parsed it from the request body, but silently dropped it before the
+  INSERT. Added the column (`ALTER TABLE ... ADD COLUMN remarks`, mirrored
+  in `schema.sql`) and wired it into the insert, so Furnishing In is
+  consistent with every other stage's remarks handling.
+- Verified live: a completed coach's detail page shows all 6 stages
+  checked off with "Pipeline complete"; a mid-pipeline coach shows the
+  correct current stage number, "Awaiting Paint Out" status, and its
+  recorded remarks/line-slot history for the stages already done.
+
 ## Profile (all roles)
 
 `/profile` — available to every role via the sidebar, not gated by

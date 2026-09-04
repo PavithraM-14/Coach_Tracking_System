@@ -370,15 +370,23 @@ const ACTIVITY_LABEL: Record<RecentActivityRow["type"], string> = {
   SHELL_OUTTURN: "Shell Outturn",
   FURNISHING_IN: "Furnishing In",
   PAINT_IN: "Paint In",
+  PAINT_OUT: "Paint Out",
+  ASSEMBLY_IN: "Assembly In",
+  ASSEMBLY_OUT: "Assembly Out",
 };
 
 const ACTIVITY_COLOR: Record<RecentActivityRow["type"], string> = {
   SHELL_OUTTURN: "bg-amber-100 text-amber-700",
   FURNISHING_IN: "bg-purple-100 text-purple-700",
   PAINT_IN: "bg-blue-100 text-blue-700",
+  PAINT_OUT: "bg-indigo-100 text-indigo-700",
+  ASSEMBLY_IN: "bg-teal-100 text-teal-700",
+  ASSEMBLY_OUT: "bg-green-100 text-green-700",
 };
 
 function RecentActivity() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [rows, setRows] = useState<RecentActivityRow[] | null>(null);
   const [query, setQuery] = useState("");
 
@@ -426,23 +434,31 @@ function RecentActivity() {
 
       {filtered && filtered.length > 0 && (
         <div className="mt-4 divide-y divide-slate-100">
-          {filtered.map((row, i) => (
-            <div key={i} className="flex items-center justify-between py-3">
-              <div>
-                <p className="text-sm font-medium text-slate-800">
-                  Coach {row.coach_number} <span className="text-slate-400">·</span>{" "}
-                  <span className="text-slate-500">{row.coach_type}</span>
-                </p>
-                <p className="text-xs text-slate-400">by {row.performed_by}</p>
-              </div>
-              <div className="text-right">
-                <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ACTIVITY_COLOR[row.type]}`}>
-                  {ACTIVITY_LABEL[row.type]}
-                </span>
-                <p className="mt-1 text-xs text-slate-400">{formatDateTime(row.occurred_at)}</p>
-              </div>
-            </div>
-          ))}
+          {filtered.map((row, i) => {
+            const RowTag = isAdmin ? Link : "div";
+            const rowProps = isAdmin ? { to: `/admin/coaches/${row.coach_id}` } : {};
+            return (
+              <RowTag
+                key={i}
+                {...rowProps}
+                className={`flex items-center justify-between py-3 ${isAdmin ? "-mx-2 rounded-lg px-2 hover:bg-slate-50" : ""}`}
+              >
+                <div>
+                  <p className="text-sm font-medium text-slate-800">
+                    Coach {row.coach_number} <span className="text-slate-400">·</span>{" "}
+                    <span className="text-slate-500">{row.coach_type}</span>
+                  </p>
+                  <p className="text-xs text-slate-400">by {row.performed_by}</p>
+                </div>
+                <div className="text-right">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${ACTIVITY_COLOR[row.type]}`}>
+                    {ACTIVITY_LABEL[row.type]}
+                  </span>
+                  <p className="mt-1 text-xs text-slate-400">{formatDateTime(row.occurred_at)}</p>
+                </div>
+              </RowTag>
+            );
+          })}
         </div>
       )}
     </div>

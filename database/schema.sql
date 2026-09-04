@@ -231,6 +231,7 @@ CREATE TABLE furnishing_in_records (
   coach_id INT NOT NULL UNIQUE,
   shell_outturn_id INT NOT NULL UNIQUE,
   furnishing_in_datetime DATETIME NOT NULL,
+  remarks VARCHAR(255) NULL,
   recorded_by_user_id INT NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

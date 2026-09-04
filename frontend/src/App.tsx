@@ -22,6 +22,7 @@ import { AssemblyInHistoryPage } from "./pages/AssemblyInHistoryPage";
 import { AssemblyOutPage } from "./pages/AssemblyOutPage";
 import { AssemblyOutHistoryPage } from "./pages/AssemblyOutHistoryPage";
 import { PaintAssignmentMatrixPage } from "./pages/PaintAssignmentMatrixPage";
+import { CoachDetailPage } from "./pages/CoachDetailPage";
 import { ProfilePage } from "./pages/ProfilePage";
 
 function App() {
@@ -123,6 +124,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["ADMIN"]}>
                         <PaintAssignmentMatrixPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/coaches/:coachId"
+                    element={
+                      <ProtectedRoute allowedRoles={["ADMIN"]}>
+                        <CoachDetailPage />
                       </ProtectedRoute>
                     }
                   />

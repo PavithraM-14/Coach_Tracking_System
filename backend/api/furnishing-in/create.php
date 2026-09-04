@@ -60,13 +60,14 @@ if (!$assignment || (int) $assignment['assigned_user_id'] !== (int) $currentUser
 $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare(
-        'INSERT INTO furnishing_in_records (coach_id, shell_outturn_id, furnishing_in_datetime, recorded_by_user_id)
-         VALUES (:coach_id, :shell_outturn_id, :furnishing_in_datetime, :recorded_by_user_id)'
+        'INSERT INTO furnishing_in_records (coach_id, shell_outturn_id, furnishing_in_datetime, remarks, recorded_by_user_id)
+         VALUES (:coach_id, :shell_outturn_id, :furnishing_in_datetime, :remarks, :recorded_by_user_id)'
     );
     $stmt->execute([
         'coach_id' => $coachId,
         'shell_outturn_id' => $shellOutturn['id'],
         'furnishing_in_datetime' => $inDatetime,
+        'remarks' => $remarks,
         'recorded_by_user_id' => $currentUser['sub'],
     ]);
     $furnishingInId = (int) $pdo->lastInsertId();

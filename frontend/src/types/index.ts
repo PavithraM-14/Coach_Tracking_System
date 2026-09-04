@@ -272,12 +272,65 @@ export interface ApiErrorBody {
   error: string;
 }
 
+export type ActivityType =
+  | "SHELL_OUTTURN"
+  | "FURNISHING_IN"
+  | "PAINT_IN"
+  | "PAINT_OUT"
+  | "ASSEMBLY_IN"
+  | "ASSEMBLY_OUT";
+
 export interface RecentActivityRow {
-  type: "SHELL_OUTTURN" | "FURNISHING_IN" | "PAINT_IN";
+  type: ActivityType;
+  coach_id: number;
   coach_number: string;
   coach_type: string;
   occurred_at: string;
   performed_by: string;
+  remarks: string | null;
+}
+
+// GET /api/admin/coach_detail.php — full snapshot for the Admin drill-down
+// view: coach info, where it currently sits in the pipeline, the workflow
+// stepper's done/pending state per stage, and the full history with remarks.
+export interface CoachDetailInfo {
+  coach_id: number;
+  coach_number: string;
+  serial_no: string;
+  coach_type: string;
+  coach_category: string;
+  plant: string;
+  production_year: string;
+  bo_number: string;
+  bo_item: number;
+  installation_no: string | null;
+}
+
+export interface CoachDetailLocation {
+  status: "PENDING" | "QUEUED" | "ASSIGNED" | "COMPLETED";
+  label: string;
+  held_by: string | null;
+}
+
+export interface CoachDetailStage {
+  key: string;
+  label: string;
+  done: boolean;
+}
+
+export interface CoachDetailHistoryEntry {
+  stage: string;
+  occurred_at: string;
+  recorded_by: string;
+  remarks: string | null;
+  location?: string;
+}
+
+export interface CoachDetailResponse {
+  coach: CoachDetailInfo;
+  location: CoachDetailLocation;
+  stages: CoachDetailStage[];
+  history: CoachDetailHistoryEntry[];
 }
 
 export interface AdminDashboardStats {

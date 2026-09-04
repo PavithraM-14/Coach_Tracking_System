@@ -3,6 +3,7 @@ import type {
   AdminDashboardStats,
   AdminLookups,
   AdminUserRow,
+  CoachDetailResponse,
   DeleteUserResponse,
   OperationCode,
   ProductionOrderCreateResponse,
@@ -65,6 +66,10 @@ export function deleteUser(userId: number): Promise<DeleteUserResponse> {
     method: "POST",
     body: { user_id: userId },
   });
+}
+
+export function getCoachDetail(coachId: number): Promise<CoachDetailResponse> {
+  return apiRequest(`/admin/coach_detail.php?coach_id=${coachId}`);
 }
 
 export function getAdminDashboardStats(): Promise<AdminDashboardStats> {
