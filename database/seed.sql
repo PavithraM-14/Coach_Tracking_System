@@ -50,9 +50,10 @@ INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id)
 (11, 'E1011', 'T. Karthik',     'finalinsp1',  '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 11),
 (12, 'E1012', 'G. Vijay',       'dispatch1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12),
 (13, 'E1013', 'L. Manager',     'viewer1',     '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 13),
--- Extra Furnishing/Paint employees so the skill-based assignment queue has
--- more than one candidate to load-balance across.
-(14, 'E1014', 'S. Devi',        'furnish2',    '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 4),
+-- A second Paint employee so the skill-based assignment queue (capped at 5
+-- concurrent per employee) has more than one candidate to load-balance
+-- across. Furnishing is deliberately single-employee (furnish1 only) — that
+-- module has no cap, so a second Furnishing login would just sit idle.
 (15, 'E1015', 'V. Raja',        'paint2',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5);
 
 -- ===================== Plants =====================
@@ -84,30 +85,35 @@ INSERT INTO coach_categories (id, code, name, sort_order, is_active) VALUES
 
 -- ===================== Skills =====================
 -- Skill = "can perform this OPERATION on this coach category". Only
--- FURNISHING_OUT and PAINT_IN are live operations this phase (the ones the
--- assignment queue actually assigns work for) — PAINT_OUT and ASSEMBLY_OP
--- skills can be created via Admin's Skill Master ahead of those modules
--- being built, they just won't have anything assigning against them yet.
+-- FURNISHING_IN is live here — the assignment queue actually assigns work
+-- for it. ASSEMBLY_OP skills can be created via Admin's Skill Master ahead
+-- of that module being built. Paint does NOT use this table — it has its
+-- own, finer-grained `paint_type_assignments` matrix below (per coach TYPE,
+-- not category, with separate In/Out flags), configured via the Admin
+-- "Supervisor-Coach Assignments Matrix" page.
 
 INSERT INTO skills (id, name, operation, role_code, coach_category_id) VALUES
-(1, 'Furnishing Out - LHB AC', 'FURNISHING_OUT', 'FURNISHING', 1),
-(2, 'Furnishing Out - LHB Non-AC', 'FURNISHING_OUT', 'FURNISHING', 2),
-(3, 'Paint In - LHB AC', 'PAINT_IN', 'PAINT', 1),
-(4, 'Paint In - LHB Non-AC', 'PAINT_IN', 'PAINT', 2);
+(1, 'Furnishing In - LHB AC', 'FURNISHING_IN', 'FURNISHING', 1),
+(2, 'Furnishing In - LHB Non-AC', 'FURNISHING_IN', 'FURNISHING', 2),
+(3, 'Assembly In - LHB AC', 'ASSEMBLY_IN', 'ASSEMBLY_PRODUCTION', 1),
+(4, 'Assembly In - LHB Non-AC', 'ASSEMBLY_IN', 'ASSEMBLY_PRODUCTION', 2),
+(5, 'Assembly Out - LHB AC', 'ASSEMBLY_OUT', 'ASSEMBLY_PRODUCTION', 1),
+(6, 'Assembly Out - LHB Non-AC', 'ASSEMBLY_OUT', 'ASSEMBLY_PRODUCTION', 2);
 
 -- ===================== User skills =====================
--- furnish1/paint1 cover both categories; furnish2/paint2 cover only LHB AC —
--- so an LHB Non-AC coach can only ever route to furnish1/paint1, while an
--- LHB AC coach load-balances across both, demonstrating the queue once
--- furnish1/paint1 are at capacity (5) for that category.
+-- furnish1 covers both categories — every coach past Shell Outturn is
+-- assigned to them, uncapped (see Assignment::MODULE_CAPACITY). assy1 covers
+-- both Assembly In and Assembly Out for both categories (the only seeded
+-- Assembly Production login) — capped at 5 concurrent like Paint, so
+-- coaches queue once assy1 has 5 ASSIGNED for a given module.
 
 INSERT INTO user_skills (user_id, skill_id) VALUES
 (4, 1),  -- furnish1: LHB AC Furnishing
 (4, 2),  -- furnish1: LHB Non-AC Furnishing
-(14, 1), -- furnish2: LHB AC Furnishing
-(5, 3),  -- paint1: LHB AC Painting
-(5, 4),  -- paint1: LHB Non-AC Painting
-(15, 3); -- paint2: LHB AC Painting
+(6, 3),  -- assy1: LHB AC Assembly In
+(6, 4),  -- assy1: LHB Non-AC Assembly In
+(6, 5),  -- assy1: LHB AC Assembly Out
+(6, 6);  -- assy1: LHB Non-AC Assembly Out
 
 -- ===================== Coach types =====================
 -- Codes/names match the legacy tbl_coach_types active rows for these categories.
@@ -120,6 +126,16 @@ INSERT INTO coach_types (id, code, name, category_id, is_lhb, is_active, sort_or
 (5, '0024', 'LWCBAC', 1, 1, 1, 5),
 (6, '0035', 'LWSCN', 2, 1, 1, 6),
 (7, '0034', 'LSLRD', 2, 1, 1, 7);
+
+-- ===================== Paint type assignments (matrix) =====================
+-- paint1 = Paint In, paint2 = Paint Out, both across every seeded coach type.
+-- Paint In assignment still respects the 5-concurrent cap and QUEUEs
+-- overflow (Assignment::MODULE_CAPACITY['PAINT']) — this table only decides
+-- *eligibility* (who can be assigned), not capacity.
+
+INSERT INTO paint_type_assignments (user_id, coach_type_id, can_in, can_out) VALUES
+(5, 1, 1, 0), (5, 2, 1, 0), (5, 3, 1, 0), (5, 4, 1, 0), (5, 5, 1, 0), (5, 6, 1, 0), (5, 7, 1, 0), -- paint1: Paint In, all types
+(15, 1, 0, 1), (15, 2, 0, 1), (15, 3, 0, 1), (15, 4, 0, 1), (15, 5, 0, 1), (15, 6, 0, 1), (15, 7, 0, 1); -- paint2: Paint Out, all types
 
 -- ===================== Fixed schedules =====================
 -- Admin-configured static day-counts (not predicted). shell_to_furnishing_days
@@ -156,6 +172,52 @@ INSERT INTO paint_lines (id, code, name, total_slots) VALUES
 INSERT INTO paint_line_slots (paint_line_id, slot_number)
 SELECT pl.id, n.slot_number
 FROM paint_lines pl
+JOIN (
+  SELECT 1 AS slot_number UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+  UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+) n;
+
+-- ===================== Paint Out / Assembly In / Assembly Out lines & slots =====================
+-- Same 10-line x 10-slot capacity as Paint (confirmed requirement), each
+-- stage with its own independent pool.
+
+INSERT INTO paint_out_lines (id, code, name, total_slots) VALUES
+(1, 'POL1', 'Paint Out Line 1', 10), (2, 'POL2', 'Paint Out Line 2', 10), (3, 'POL3', 'Paint Out Line 3', 10),
+(4, 'POL4', 'Paint Out Line 4', 10), (5, 'POL5', 'Paint Out Line 5', 10), (6, 'POL6', 'Paint Out Line 6', 10),
+(7, 'POL7', 'Paint Out Line 7', 10), (8, 'POL8', 'Paint Out Line 8', 10), (9, 'POL9', 'Paint Out Line 9', 10),
+(10, 'POL10', 'Paint Out Line 10', 10);
+
+INSERT INTO paint_out_line_slots (paint_out_line_id, slot_number)
+SELECT pl.id, n.slot_number
+FROM paint_out_lines pl
+JOIN (
+  SELECT 1 AS slot_number UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+  UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+) n;
+
+INSERT INTO assembly_in_lines (id, code, name, total_slots) VALUES
+(1, 'AIL1', 'Assembly In Line 1', 10), (2, 'AIL2', 'Assembly In Line 2', 10), (3, 'AIL3', 'Assembly In Line 3', 10),
+(4, 'AIL4', 'Assembly In Line 4', 10), (5, 'AIL5', 'Assembly In Line 5', 10), (6, 'AIL6', 'Assembly In Line 6', 10),
+(7, 'AIL7', 'Assembly In Line 7', 10), (8, 'AIL8', 'Assembly In Line 8', 10), (9, 'AIL9', 'Assembly In Line 9', 10),
+(10, 'AIL10', 'Assembly In Line 10', 10);
+
+INSERT INTO assembly_in_line_slots (assembly_in_line_id, slot_number)
+SELECT al.id, n.slot_number
+FROM assembly_in_lines al
+JOIN (
+  SELECT 1 AS slot_number UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+  UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+) n;
+
+INSERT INTO assembly_out_lines (id, code, name, total_slots) VALUES
+(1, 'AOL1', 'Assembly Out Line 1', 10), (2, 'AOL2', 'Assembly Out Line 2', 10), (3, 'AOL3', 'Assembly Out Line 3', 10),
+(4, 'AOL4', 'Assembly Out Line 4', 10), (5, 'AOL5', 'Assembly Out Line 5', 10), (6, 'AOL6', 'Assembly Out Line 6', 10),
+(7, 'AOL7', 'Assembly Out Line 7', 10), (8, 'AOL8', 'Assembly Out Line 8', 10), (9, 'AOL9', 'Assembly Out Line 9', 10),
+(10, 'AOL10', 'Assembly Out Line 10', 10);
+
+INSERT INTO assembly_out_line_slots (assembly_out_line_id, slot_number)
+SELECT al.id, n.slot_number
+FROM assembly_out_lines al
 JOIN (
   SELECT 1 AS slot_number UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
   UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
@@ -282,7 +344,7 @@ VALUES
 (95, '3150', '3150', 9, 4);
 
 -- ===================== Transactional tables: intentionally empty =====================
--- shell_outturn_transactions, furnishing_in_records, furnishing_out_transactions,
--- paint_in_transactions, coach_assignments start with zero rows. They fill up
--- as real users submit data through the UI (coach_assignments is populated
--- automatically by the assignment engine as coaches become eligible).
+-- shell_outturn_transactions, furnishing_in_records, paint_in_transactions,
+-- coach_assignments start with zero rows. They fill up as real users submit
+-- data through the UI (coach_assignments is populated automatically by the
+-- assignment engine as coaches become eligible).

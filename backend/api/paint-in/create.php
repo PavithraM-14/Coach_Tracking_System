@@ -36,11 +36,11 @@ if (!$coach) {
     Response::error('Coach not found.', 404);
 }
 
-$stmt = $pdo->prepare('SELECT id FROM furnishing_out_transactions WHERE coach_id = :coach_id');
+$stmt = $pdo->prepare('SELECT id FROM furnishing_in_records WHERE coach_id = :coach_id');
 $stmt->execute(['coach_id' => $coachId]);
-$furnishingOut = $stmt->fetch();
-if (!$furnishingOut) {
-    Response::error('This coach has not completed Furnishing Out yet.', 409);
+$furnishingIn = $stmt->fetch();
+if (!$furnishingIn) {
+    Response::error('This coach has not entered Furnishing In yet.', 409);
 }
 
 $stmt = $pdo->prepare('SELECT id FROM paint_in_transactions WHERE coach_id = :coach_id');
@@ -75,12 +75,12 @@ $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare(
         'INSERT INTO paint_in_transactions
-            (coach_id, furnishing_out_id, paint_line_id, slot_id, paint_in_datetime, remarks, recorded_by_user_id)
-         VALUES (:coach_id, :furnishing_out_id, :paint_line_id, :slot_id, :paint_in_datetime, :remarks, :recorded_by_user_id)'
+            (coach_id, furnishing_in_id, paint_line_id, slot_id, paint_in_datetime, remarks, recorded_by_user_id)
+         VALUES (:coach_id, :furnishing_in_id, :paint_line_id, :slot_id, :paint_in_datetime, :remarks, :recorded_by_user_id)'
     );
     $stmt->execute([
         'coach_id' => $coachId,
-        'furnishing_out_id' => $furnishingOut['id'],
+        'furnishing_in_id' => $furnishingIn['id'],
         'paint_line_id' => $slot['paint_line_id'],
         'slot_id' => $slotId,
         'paint_in_datetime' => $paintInDatetime,
@@ -91,6 +91,8 @@ try {
 
     // Frees up this employee's Paint capacity, auto-pulling their next queued coach.
     Assignment::complete($pdo, $coachId, 'PAINT');
+    // Queues/assigns the coach for Paint Out, the next stage in the pipeline.
+    Assignment::assignOrQueue($pdo, $coachId, 'PAINT_OUT');
 
     $pdo->commit();
 } catch (PDOException $e) {

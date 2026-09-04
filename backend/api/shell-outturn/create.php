@@ -56,22 +56,11 @@ try {
     ]);
     $shellOutturnId = (int) $pdo->lastInsertId();
 
-    // Furnishing In is opened automatically with the identical datetime — the
-    // hard business rule (Shell Outturn = Furnishing In, same event).
-    $stmt = $pdo->prepare(
-        'INSERT INTO furnishing_in_records (coach_id, shell_outturn_id, furnishing_in_datetime, recorded_by_user_id)
-         VALUES (:coach_id, :shell_outturn_id, :furnishing_in_datetime, :recorded_by_user_id)'
-    );
-    $stmt->execute([
-        'coach_id' => $coachId,
-        'shell_outturn_id' => $shellOutturnId,
-        'furnishing_in_datetime' => $outturnDatetime,
-        'recorded_by_user_id' => $currentUser['sub'],
-    ]);
-    $furnishingInId = (int) $pdo->lastInsertId();
-
-    // Coach is now eligible for Furnishing work — assign it to an available
-    // skilled employee, or queue it if everyone with that skill is at capacity.
+    // Coach is now eligible for Furnishing In — assign it to an available
+    // skilled Furnishing employee, or queue it if everyone with that skill is
+    // at capacity. Furnishing In itself is a manual step (see
+    // backend/api/furnishing-in/create.php): the assigned employee sees this
+    // Shell Outturn date pre-filled but can edit it before submitting.
     Assignment::assignOrQueue($pdo, $coachId, 'FURNISHING');
 
     $pdo->commit();
@@ -82,7 +71,6 @@ try {
 
 Response::ok([
     'shell_outturn_id' => $shellOutturnId,
-    'furnishing_in_id' => $furnishingInId,
     'coach_number' => $coach['coach_number'],
     'outturn_datetime' => $outturnDatetime,
 ], 201);

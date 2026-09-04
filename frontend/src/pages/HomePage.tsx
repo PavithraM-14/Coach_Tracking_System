@@ -16,13 +16,16 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { visibleNavItems } from "../components/layout/AppShell";
-import { getShellOutturnWorklist } from "../api/shellOutturn";
+import { getShellOutturnList, getShellOutturnWorklist } from "../api/shellOutturn";
 import { getFurnishingInList } from "../api/furnishingIn";
-import { getFurnishingOutWorklist } from "../api/furnishingOut";
-import { getPaintInWorklist, getPaintLines } from "../api/paintIn";
+import { getPaintInList, getPaintInWorklist, getPaintLines } from "../api/paintIn";
+import { getPaintOutList, getPaintOutWorklist, getPaintOutLines } from "../api/paintOut";
+import { getAssemblyInList, getAssemblyInWorklist, getAssemblyInLines } from "../api/assemblyIn";
+import { getAssemblyOutList, getAssemblyOutWorklist, getAssemblyOutLines } from "../api/assemblyOut";
 import { getUsers, getProductionOrders, getAdminDashboardStats } from "../api/admin";
 import { getRecentActivity } from "../api/dashboard";
-import type { RecentActivityRow } from "../types";
+import { getMyAssignmentSummary } from "../api/assignments";
+import type { AssignmentSummary, RecentActivityRow } from "../types";
 import { formatDateTime } from "../utils/dateFormat";
 
 interface StatCardProps {
@@ -32,6 +35,7 @@ interface StatCardProps {
   value: number | string;
   description: string;
   to?: string;
+  actionLabel?: string;
 }
 
 const COLOR_CLASSES: Record<StatCardProps["color"], string> = {
@@ -42,7 +46,7 @@ const COLOR_CLASSES: Record<StatCardProps["color"], string> = {
   indigo: "bg-indigo-100 text-indigo-600",
 };
 
-function StatCard({ icon: Icon, color, label, value, description, to }: StatCardProps) {
+function StatCard({ icon: Icon, color, label, value, description, to, actionLabel }: StatCardProps) {
   const content = (
     <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${COLOR_CLASSES[color]}`}>
@@ -51,7 +55,7 @@ function StatCard({ icon: Icon, color, label, value, description, to }: StatCard
       <p className="mt-3 text-sm font-medium text-slate-600">{label}</p>
       <p className="mt-1 text-3xl font-bold text-slate-900">{value}</p>
       <p className="mt-1 text-xs text-slate-400">{description}</p>
-      {to && <p className="mt-auto pt-2 text-xs font-medium text-blue-600">Click to view →</p>}
+      {to && <p className="mt-auto pt-2 text-xs font-medium text-blue-600">{actionLabel ?? "Click to view →"}</p>}
     </div>
   );
 
@@ -73,8 +77,11 @@ function AdminStats() {
   const [boCount, setBoCount] = useState<number | null>(null);
   const [coachCount, setCoachCount] = useState<number | null>(null);
   const [pendingShell, setPendingShell] = useState<number | null>(null);
-  const [awaitingFurnOut, setAwaitingFurnOut] = useState<number | null>(null);
+  const [awaitingFurnIn, setAwaitingFurnIn] = useState<number | null>(null);
   const [awaitingPaint, setAwaitingPaint] = useState<number | null>(null);
+  const [awaitingPaintOut, setAwaitingPaintOut] = useState<number | null>(null);
+  const [awaitingAssemblyIn, setAwaitingAssemblyIn] = useState<number | null>(null);
+  const [awaitingAssemblyOut, setAwaitingAssemblyOut] = useState<number | null>(null);
   const [queued, setQueued] = useState<number | null>(null);
 
   useEffect(() => {
@@ -85,8 +92,11 @@ function AdminStats() {
     });
     getAdminDashboardStats().then((stats) => {
       setPendingShell(stats.pending_shell_outturn);
-      setAwaitingFurnOut(stats.awaiting_furnishing_out);
+      setAwaitingFurnIn(stats.awaiting_furnishing_in);
       setAwaitingPaint(stats.awaiting_paint_in);
+      setAwaitingPaintOut(stats.awaiting_paint_out);
+      setAwaitingAssemblyIn(stats.awaiting_assembly_in);
+      setAwaitingAssemblyOut(stats.awaiting_assembly_out);
       setQueued(stats.queued_for_assignment);
     });
   }, []);
@@ -97,8 +107,11 @@ function AdminStats() {
       <StatCard icon={FileText} color="amber" label="BOs / Production Orders" value={boCount ?? "…"} description="SAP/BO plan entries" to="/admin/production-orders" />
       <StatCard icon={Layers} color="green" label="Total Coaches" value={coachCount ?? "…"} description="Generated from BO serial ranges" to="/admin/production-orders" />
       <StatCard icon={ClipboardList} color="amber" label="Pending Shell Outturn" value={pendingShell ?? "…"} description="System-wide, all coaches" />
-      <StatCard icon={PackageCheck} color="purple" label="Awaiting Furnishing Out" value={awaitingFurnOut ?? "…"} description="Furnishing In done, Out pending" />
-      <StatCard icon={PaintBucket} color="blue" label="Awaiting Paint In" value={awaitingPaint ?? "…"} description="Furnished-out, not yet painted" to="/line-management" />
+      <StatCard icon={PackageCheck} color="purple" label="Awaiting Furnishing In" value={awaitingFurnIn ?? "…"} description="Shell Outturn done, not yet furnished" />
+      <StatCard icon={PaintBucket} color="blue" label="Awaiting Paint In" value={awaitingPaint ?? "…"} description="Furnishing In done, not yet painted" to="/line-management" />
+      <StatCard icon={PaintBucket} color="indigo" label="Awaiting Paint Out" value={awaitingPaintOut ?? "…"} description="Paint In done, not yet painted out" to="/line-management" />
+      <StatCard icon={Layers} color="purple" label="Awaiting Assembly In" value={awaitingAssemblyIn ?? "…"} description="Paint Out done, not yet assembled in" to="/line-management" />
+      <StatCard icon={Layers} color="green" label="Awaiting Assembly Out" value={awaitingAssemblyOut ?? "…"} description="Assembly In done, not yet assembled out" to="/line-management" />
       <StatCard icon={ListChecks} color="indigo" label="Queued for Assignment" value={queued ?? "…"} description="Awaiting a skilled employee with capacity" />
     </StatGrid>
   );
@@ -106,9 +119,16 @@ function AdminStats() {
 
 function ShellProductionStats() {
   const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
 
   useEffect(() => {
     getShellOutturnWorklist().then((res) => setPending(res.data.length));
+    getShellOutturnList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local time
+      setTotalCompleted(res.data.length);
+      setCompletedToday(res.data.filter((row) => row.outturn_datetime.slice(0, 10) === todayStr).length);
+    });
   }, []);
 
   return (
@@ -116,72 +136,245 @@ function ShellProductionStats() {
       <StatCard
         icon={ClipboardList}
         color="amber"
-        label="Pending Shell Outturn"
+        label="Record Shell Outturn"
         value={pending ?? "…"}
         description="Coaches awaiting Shell Outturn entry"
         to="/shell-outturn"
+        actionLabel="Click to record →"
       />
-      <StatCard icon={Factory} color="blue" label="Shell Production" value="View" description="Full pending worklist" to="/shell-production" />
+      <StatCard
+        icon={Factory}
+        color="blue"
+        label="Full Pending Worklist"
+        value="View"
+        description="Every pending coach with BO, plant & production year"
+        to="/shell-production"
+      />
+      <StatCard
+        icon={CheckCircle2}
+        color="green"
+        label="Completed Today"
+        value={completedToday ?? "…"}
+        description="Shell Outturns recorded today"
+        to="/shell-outturn/history?today=1"
+      />
+      <StatCard
+        icon={Layers}
+        color="purple"
+        label="Total Completed"
+        value={totalCompleted ?? "…"}
+        description="All-time Shell Outturns recorded"
+        to="/shell-outturn/history"
+      />
     </StatGrid>
   );
 }
 
 function FurnishingStats() {
-  const [awaitingOut, setAwaitingOut] = useState<number | null>(null);
   const [total, setTotal] = useState<number | null>(null);
-  const [completed, setCompleted] = useState<number | null>(null);
+  const [recordedToday, setRecordedToday] = useState<number | null>(null);
+  const [summary, setSummary] = useState<AssignmentSummary | null>(null);
 
   useEffect(() => {
-    getFurnishingOutWorklist().then((res) => setAwaitingOut(res.data.length));
     getFurnishingInList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
       setTotal(res.data.length);
-      setCompleted(res.data.filter((r) => r.status === "FURNISHING_OUT").length);
+      setRecordedToday(res.data.filter((r) => r.furnishing_in_datetime.slice(0, 10) === todayStr).length);
     });
+    getMyAssignmentSummary().then(setSummary);
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Furnishing Out" value={awaitingOut ?? "…"} description="Furnishing In done, Out pending" to="/furnishing-in" />
-      <StatCard icon={CheckCircle2} color="green" label="Furnishing Out Completed" value={completed ?? "…"} description="Now eligible for Paint In" to="/furnishing-in" />
-      <StatCard icon={ClipboardList} color="blue" label="Total Furnishing In Records" value={total ?? "…"} description="All-time count" to="/furnishing-in" />
-      <StatCard icon={PackageCheck} color="purple" label="Furnishing In / Out" value="Open" description="Go to worklist" to="/furnishing-in" />
+      <StatCard
+        icon={ClipboardList}
+        color="blue"
+        label="Total Furnishing In Records"
+        value={total ?? "…"}
+        description="All-time, system-wide"
+        to="/furnishing-in/history"
+      />
+      <StatCard
+        icon={CheckCircle2}
+        color="green"
+        label="Recorded Today"
+        value={recordedToday ?? "…"}
+        description="Furnishing In records opened today"
+        to="/furnishing-in/history?today=1"
+      />
+      <StatCard
+        icon={PackageCheck}
+        color="amber"
+        label="Assigned to You"
+        value={summary ? summary.assigned_count : "…"}
+        description="Coaches waiting for your Furnishing In"
+        to="/furnishing-in"
+      />
+      <StatCard
+        icon={Clock}
+        color="purple"
+        label="Queued for You"
+        value={summary?.queued_count ?? "…"}
+        description="Matched to your skills, waiting on capacity"
+        to="/furnishing-in"
+      />
     </StatGrid>
   );
 }
 
-function PaintStats() {
+// A PAINT login might be configured for Paint In only, Paint Out only, or
+// both (per the Supervisor-Coach Assignments Matrix) — the dashboard only
+// shows stat cards for stages this specific employee can actually reach,
+// same reasoning as the nav/route capability gate.
+function PaintInStats() {
   const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [occupied, setOccupied] = useState<number | null>(null);
   const [available, setAvailable] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [paintedToday, setPaintedToday] = useState<number | null>(null);
 
   useEffect(() => {
     getPaintInWorklist().then((res) => setAwaiting(res.data.length));
     getPaintLines().then((res) => {
       const occ = res.data.reduce((sum, l) => sum + l.occupied_slots, 0);
       const total = res.data.reduce((sum, l) => sum + l.total_slots, 0);
-      setOccupied(occ);
       setAvailable(total - occ);
+    });
+    getPaintInList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalRecords(res.data.length);
+      setPaintedToday(res.data.filter((r) => r.paint_in_datetime.slice(0, 10) === todayStr).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Paint In" value={awaiting ?? "…"} description="Furnished-out coaches pending allocation" to="/line-management" />
-      <StatCard icon={PaintBucket} color="blue" label="Occupied Slots" value={occupied ?? "…"} description="Currently in paint lines" to="/line-management" />
-      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/line-management" />
+      <StatCard icon={Clock} color="amber" label="Awaiting Paint In" value={awaiting ?? "…"} description="Furnishing In done, pending allocation" to="/paint-in" />
+      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/paint-in" />
+      <StatCard icon={ClipboardList} color="indigo" label="Painted Today" value={paintedToday ?? "…"} description="Paint In recorded today" to="/paint-in/history?today=1" />
+      <StatCard icon={PaintBucket} color="blue" label="Total Paint In Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/paint-in/history" />
     </StatGrid>
+  );
+}
+
+function PaintOutStats() {
+  const [awaiting, setAwaiting] = useState<number | null>(null);
+  const [available, setAvailable] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [paintedToday, setPaintedToday] = useState<number | null>(null);
+
+  useEffect(() => {
+    getPaintOutWorklist().then((res) => setAwaiting(res.data.length));
+    getPaintOutLines().then((res) => {
+      const occ = res.data.reduce((sum, l) => sum + l.occupied_slots, 0);
+      const total = res.data.reduce((sum, l) => sum + l.total_slots, 0);
+      setAvailable(total - occ);
+    });
+    getPaintOutList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalRecords(res.data.length);
+      setPaintedToday(res.data.filter((r) => r.paint_out_datetime.slice(0, 10) === todayStr).length);
+    });
+  }, []);
+
+  return (
+    <StatGrid>
+      <StatCard icon={Clock} color="amber" label="Awaiting Paint Out" value={awaiting ?? "…"} description="Paint In done, pending allocation" to="/paint-out" />
+      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/paint-out" />
+      <StatCard icon={ClipboardList} color="indigo" label="Painted Out Today" value={paintedToday ?? "…"} description="Paint Out recorded today" to="/paint-out/history?today=1" />
+      <StatCard icon={PaintBucket} color="blue" label="Total Paint Out Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/paint-out/history" />
+    </StatGrid>
+  );
+}
+
+function PaintStats({ capabilities }: { capabilities: string[] }) {
+  return (
+    <>
+      {capabilities.includes("PAINT") && <PaintInStats />}
+      {capabilities.includes("PAINT_OUT") && <PaintOutStats />}
+    </>
+  );
+}
+
+// Same reasoning as PaintStats above — an ASSEMBLY_PRODUCTION login might be
+// configured for Assembly In only, Assembly Out only, or both.
+function AssemblyInStats() {
+  const [awaiting, setAwaiting] = useState<number | null>(null);
+  const [available, setAvailable] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [doneToday, setDoneToday] = useState<number | null>(null);
+
+  useEffect(() => {
+    getAssemblyInWorklist().then((res) => setAwaiting(res.data.length));
+    getAssemblyInLines().then((res) => {
+      const occ = res.data.reduce((sum, l) => sum + l.occupied_slots, 0);
+      const total = res.data.reduce((sum, l) => sum + l.total_slots, 0);
+      setAvailable(total - occ);
+    });
+    getAssemblyInList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalRecords(res.data.length);
+      setDoneToday(res.data.filter((r) => r.assembly_in_datetime.slice(0, 10) === todayStr).length);
+    });
+  }, []);
+
+  return (
+    <StatGrid>
+      <StatCard icon={Clock} color="amber" label="Awaiting Assembly In" value={awaiting ?? "…"} description="Paint Out done, pending allocation" to="/assembly-in" />
+      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/assembly-in" />
+      <StatCard icon={ClipboardList} color="indigo" label="Assembled In Today" value={doneToday ?? "…"} description="Assembly In recorded today" to="/assembly-in/history?today=1" />
+      <StatCard icon={Layers} color="purple" label="Total Assembly In Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/assembly-in/history" />
+    </StatGrid>
+  );
+}
+
+function AssemblyOutStats() {
+  const [awaiting, setAwaiting] = useState<number | null>(null);
+  const [available, setAvailable] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number | null>(null);
+  const [doneToday, setDoneToday] = useState<number | null>(null);
+
+  useEffect(() => {
+    getAssemblyOutWorklist().then((res) => setAwaiting(res.data.length));
+    getAssemblyOutLines().then((res) => {
+      const occ = res.data.reduce((sum, l) => sum + l.occupied_slots, 0);
+      const total = res.data.reduce((sum, l) => sum + l.total_slots, 0);
+      setAvailable(total - occ);
+    });
+    getAssemblyOutList().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalRecords(res.data.length);
+      setDoneToday(res.data.filter((r) => r.assembly_out_datetime.slice(0, 10) === todayStr).length);
+    });
+  }, []);
+
+  return (
+    <StatGrid>
+      <StatCard icon={Clock} color="amber" label="Awaiting Assembly Out" value={awaiting ?? "…"} description="Assembly In done, pending allocation" to="/assembly-out" />
+      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/assembly-out" />
+      <StatCard icon={ClipboardList} color="indigo" label="Assembled Out Today" value={doneToday ?? "…"} description="Assembly Out recorded today" to="/assembly-out/history?today=1" />
+      <StatCard icon={Layers} color="green" label="Total Assembly Out Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/assembly-out/history" />
+    </StatGrid>
+  );
+}
+
+function AssemblyStats({ capabilities }: { capabilities: string[] }) {
+  return (
+    <>
+      {capabilities.includes("ASSEMBLY_IN") && <AssemblyInStats />}
+      {capabilities.includes("ASSEMBLY_OUT") && <AssemblyOutStats />}
+    </>
   );
 }
 
 const ACTIVITY_LABEL: Record<RecentActivityRow["type"], string> = {
   SHELL_OUTTURN: "Shell Outturn",
-  FURNISHING_OUT: "Furnishing Out",
+  FURNISHING_IN: "Furnishing In",
   PAINT_IN: "Paint In",
 };
 
 const ACTIVITY_COLOR: Record<RecentActivityRow["type"], string> = {
   SHELL_OUTTURN: "bg-amber-100 text-amber-700",
-  FURNISHING_OUT: "bg-purple-100 text-purple-700",
+  FURNISHING_IN: "bg-purple-100 text-purple-700",
   PAINT_IN: "bg-blue-100 text-blue-700",
 };
 
@@ -257,9 +450,14 @@ function RecentActivity() {
 }
 
 export function HomePage() {
-  const { user } = useAuth();
-  const items = visibleNavItems(user?.role);
+  const { user, capabilities, capabilitiesLoading } = useAuth();
+  const items = visibleNavItems(user?.role, capabilities);
   const hasActivityFeed = user?.role && ["ADMIN", "SHELL_PRODUCTION", "FURNISHING", "PAINT"].includes(user.role);
+  // PAINT/ASSEMBLY_PRODUCTION have working modules, just not necessarily
+  // configured for this specific login — different message than a role with
+  // no module at all (e.g. MECHANICAL_INSPECTION, still unbuilt).
+  const isUnconfigured =
+    !capabilitiesLoading && items.length === 0 && user?.role && ["PAINT", "ASSEMBLY_PRODUCTION", "FURNISHING"].includes(user.role);
 
   return (
     <div>
@@ -267,14 +465,17 @@ export function HomePage() {
 
       {user?.role === "ADMIN" && <AdminStats />}
       {user?.role === "SHELL_PRODUCTION" && <ShellProductionStats />}
-      {user?.role === "FURNISHING" && <FurnishingStats />}
-      {user?.role === "PAINT" && <PaintStats />}
+      {user?.role === "FURNISHING" && capabilities.includes("FURNISHING") && <FurnishingStats />}
+      {user?.role === "PAINT" && <PaintStats capabilities={capabilities} />}
+      {user?.role === "ASSEMBLY_PRODUCTION" && <AssemblyStats capabilities={capabilities} />}
 
       {hasActivityFeed && <RecentActivity />}
 
-      {items.length === 0 && (
+      {!capabilitiesLoading && items.length === 0 && (
         <p className="mt-6 text-sm text-slate-500">
-          No modules have been built for this role yet. Check back once that module is available.
+          {isUnconfigured
+            ? "Your account isn't configured for any stage of this module yet. Ask Admin to set it up via the assignment matrix/skills."
+            : "No modules have been built for this role yet. Check back once that module is available."}
         </p>
       )}
     </div>

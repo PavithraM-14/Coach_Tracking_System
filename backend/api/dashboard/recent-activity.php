@@ -17,12 +17,12 @@ if ($currentUser['role'] === 'ADMIN') {
          JOIN coach_types ct ON ct.id = c.coach_type_id
          JOIN users u ON u.id = sot.recorded_by_user_id)
         UNION ALL
-        (SELECT 'FURNISHING_OUT', c.coach_number, ct.name,
-                fot.furnishing_out_datetime, u.full_name
-         FROM furnishing_out_transactions fot
-         JOIN coaches c ON c.id = fot.coach_id
+        (SELECT 'FURNISHING_IN', c.coach_number, ct.name,
+                fir.furnishing_in_datetime, u.full_name
+         FROM furnishing_in_records fir
+         JOIN coaches c ON c.id = fir.coach_id
          JOIN coach_types ct ON ct.id = c.coach_type_id
-         JOIN users u ON u.id = fot.recorded_by_user_id)
+         JOIN users u ON u.id = fir.recorded_by_user_id)
         UNION ALL
         (SELECT 'PAINT_IN', c.coach_number, ct.name,
                 pit.paint_in_datetime, u.full_name
@@ -51,14 +51,14 @@ if ($currentUser['role'] === 'ADMIN') {
     $stmt->execute(['user_id' => $currentUser['sub']]);
 } elseif ($currentUser['role'] === 'FURNISHING') {
     $stmt = $pdo->prepare(
-        "SELECT 'FURNISHING_OUT' AS type, c.coach_number, ct.name AS coach_type,
-                fot.furnishing_out_datetime AS occurred_at, u.full_name AS performed_by
-         FROM furnishing_out_transactions fot
-         JOIN coaches c ON c.id = fot.coach_id
+        "SELECT 'FURNISHING_IN' AS type, c.coach_number, ct.name AS coach_type,
+                fir.furnishing_in_datetime AS occurred_at, u.full_name AS performed_by
+         FROM furnishing_in_records fir
+         JOIN coaches c ON c.id = fir.coach_id
          JOIN coach_types ct ON ct.id = c.coach_type_id
-         JOIN users u ON u.id = fot.recorded_by_user_id
-         WHERE fot.recorded_by_user_id = :user_id
-         ORDER BY fot.furnishing_out_datetime DESC
+         JOIN users u ON u.id = fir.recorded_by_user_id
+         WHERE fir.recorded_by_user_id = :user_id
+         ORDER BY fir.furnishing_in_datetime DESC
          LIMIT $limit"
     );
     $stmt->execute(['user_id' => $currentUser['sub']]);

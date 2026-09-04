@@ -33,8 +33,10 @@ if (!$user) {
 $referenceChecks = [
     'shell_outturn_transactions' => 'recorded_by_user_id',
     'furnishing_in_records' => 'recorded_by_user_id',
-    'furnishing_out_transactions' => 'recorded_by_user_id',
     'paint_in_transactions' => 'recorded_by_user_id',
+    'paint_out_transactions' => 'recorded_by_user_id',
+    'assembly_in_transactions' => 'recorded_by_user_id',
+    'assembly_out_transactions' => 'recorded_by_user_id',
     'coach_assignments' => 'assigned_user_id',
 ];
 $hasHistory = false;
@@ -59,6 +61,9 @@ if ($hasHistory) {
 $pdo->beginTransaction();
 try {
     $pdo->prepare('DELETE FROM user_skills WHERE user_id = :id')->execute(['id' => $userId]);
+    // Matrix config, not audit history — safe to clear on a user with zero
+    // recorded work (the referenceChecks above already ruled out real history).
+    $pdo->prepare('DELETE FROM paint_type_assignments WHERE user_id = :id')->execute(['id' => $userId]);
     $pdo->prepare('DELETE FROM users WHERE id = :id')->execute(['id' => $userId]);
     $pdo->commit();
 } catch (Throwable $e) {

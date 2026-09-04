@@ -1,6 +1,7 @@
 # CTS — Coach Tracking System
 
-Current phase: Login, Admin, Shell Production, Shell Outturn, Furnish In, Paint In.
+Current phase: Login, Admin, Shell Production, Shell Outturn, Furnish In,
+Paint In, Paint Out, Assembly In, Assembly Out.
 React + PHP + MySQL, seeded from cleaned legacy reference data. See
 `.claude/plans/` in this session's history for the full design rationale.
 
@@ -35,19 +36,18 @@ React + PHP + MySQL, seeded from cleaned legacy reference data. See
 
 ## Demo accounts
 
-Every role from the functional doc has its own login (13 total). All share
-the password `Passw0rd!`.
+Every role from the functional doc has its own login (13 total), plus one
+extra Paint login (14 total). All share the password `Passw0rd!`.
 
 | Username    | Role                          | Has working pages this phase? |
 |-------------|-------------------------------|--------------------------------|
 | admin1      | ADMIN                         | Yes — Production Orders, User Management, Line Management (read-only) |
 | planning1   | PRODUCTION_PLANNING           | Login only |
 | shell1      | SHELL_PRODUCTION              | Yes — Shell Production, Shell Outturn |
-| furnish1    | FURNISHING                    | Yes — Furnishing In / Out (skills: LHB AC + Non-AC) |
-| furnish2    | FURNISHING                    | Yes — Furnishing In / Out (skill: LHB AC only) |
-| paint1      | PAINT                         | Yes — Line Management, full allocation (skills: LHB AC + Non-AC) |
-| paint2      | PAINT                         | Yes — Line Management, full allocation (skill: LHB AC only) |
-| assy1       | ASSEMBLY_PRODUCTION           | Login only |
+| furnish1    | FURNISHING                    | Yes — Furnishing In (skills: LHB AC + Non-AC) — the only Furnishing login; every coach past Shell Outturn is assigned to them, uncapped |
+| paint1      | PAINT                         | Yes — Paint In (`/paint-in`, full allocation; matrix: Paint In, all coach types) |
+| paint2      | PAINT                         | Yes — Paint Out (`/paint-out`, full allocation; matrix: Paint Out, all coach types) |
+| assy1       | ASSEMBLY_PRODUCTION           | Yes — Assembly In (`/assembly-in`) + Assembly Out (`/assembly-out`) (skills: LHB AC + Non-AC, both operations) |
 | mechinsp1   | MECHANICAL_INSPECTION         | Login only |
 | elecinsp1   | ELECTRICAL_INSPECTION         | Login only |
 | shunt1      | SHUNTING_STAFF                | Login only |
@@ -75,12 +75,39 @@ link is not the only thing stopping access).
   generates coaches for the serial range) and **User Management**
   (`/admin/users`) are separate sidebar items/pages now, not tabs on one
   page. Admin explicitly does **not** have Shell Outturn access, and can only
-  *view* Line Management occupancy (no allocation).
-- **Shell Production**: Shell Production worklist + Shell Outturn entry only.
-- **Furnishing**: Furnishing In / Out only.
-- **Paint**: Line Management (full allocation) only.
+  *view* Line Management occupancy (no allocation, no `/paint-in` access).
+- **Shell Production**: Shell Production worklist + Shell Outturn entry
+  (`/shell-outturn`, multi-coach) + a read-only Shell Outturn Records history
+  (`/shell-outturn/history`).
+- **Furnishing**: Furnishing In entry (`/furnishing-in`) + a read-only
+  Furnishing In Records history (`/furnishing-in/history`).
+- **Paint**: **Paint In** (`/paint-in`) and **Paint Out** (`/paint-out`) —
+  two separate entry pages, each with its own line/slot grid, worklist and
+  history page (`/paint-in/history`, `/paint-out/history`, both shared
+  read-only with Admin).
+- **Assembly Production**: **Assembly In** (`/assembly-in`) and
+  **Assembly Out** (`/assembly-out`) — same pattern as Paint, its own
+  line/slot grid and history page per stage (`/assembly-in/history`,
+  `/assembly-out/history`).
 - Logging in as a role with no page yet lands on a Dashboard that says so —
   no dead nav links.
+
+**Line Management** (`/line-management`) and **Paint In** (`/paint-in`) are
+deliberately two separate pages/routes/nav items, not one component
+branching on role — they used to be combined (a single page that either
+showed Admin's read-only multi-tab overview or Paint's data-entry form
+depending on `user.role`), but that made it too easy for a change meant for
+one role to leak into the other. Now: Admin-only content lives only in
+`LineManagementPage.tsx`, Paint's entry form lives only in `PaintInPage.tsx`,
+and neither imports or branches into the other.
+
+Each of the three stages (Shell Outturn, Furnishing In, Paint In) follows the
+same **entry + history** split: the entry page is the worklist/submission
+form for that role, and the history page is a read-only, searchable records
+list with a "today only" filter (`?today=1`) that dashboard tiles link into
+directly — a "Completed Today" tile that just linked to the entry page used
+to show the wrong (unfiltered) count; it now links to
+`.../history?today=1`.
 
 ## Layout
 
@@ -96,66 +123,190 @@ a small round avatar icon next to it) and Log out is pinned to the very
 bottom of the sidebar on its own, with no name/role text above it (removed —
 that info is already in the header).
 
-**Line Management** (`/line-management`, renamed from "Paint In") now shows
-**10 lines × 10 slots = 100 total capacity** (was 4 lines), with a 3-state
-legend: green = available, orange = occupied (a coach is physically in that
-slot), amber "Booked" = a coach is assigned to a Paint employee (via the
-skill queue) but not yet placed in a specific slot — shown as a count badge
-(`booked_count` from `paint-in/lines.php`), not a per-slot state, since
-assignment isn't slot-specific. It also has **Paint Out Lines** and
-**Assembly In Lines** tabs — explicit "not built yet" placeholders, not faked
-functionality, since those modules don't exist yet.
+**Line Management** (`/line-management`, Admin-only) and **Paint In**
+(`/paint-in`, Paint-only) used to be one shared component that branched on
+`user.role` — Admin got a read-only view, Paint got the data-entry form. That
+turned out to be the wrong call: a change meant for one role kept risking a
+leak into the other. They're now two fully separate pages/files, each owning
+only its own role's content:
+
+- **`LineManagementPage.tsx`** (`/line-management`) is a pure read-only,
+  4-tab overview for Admin: Paint In Lines, Paint Out Lines, Assembly In
+  Lines, Assembly Out Lines — all four now live, each showing real
+  occupancy via a shared generic `ReadOnlyLines` component (no entry form on
+  any tab, since Admin can't allocate) — plus a row of four real "Records"
+  links (`/paint-in/history`, `/paint-out/history`, `/assembly-in/history`,
+  `/assembly-out/history`). Each stage shows **10 lines × 10 slots = 100
+  total capacity** — Paint Out, Assembly In and Assembly Out each have their
+  own independent line/slot pool (`paint_out_lines`, `assembly_in_lines`,
+  `assembly_out_lines` + matching `*_line_slots` tables), structurally
+  identical to Paint In's, not a shared/reused slot — a coach simply moves
+  into the next stage's own pool. Went through a few names this session —
+  "Line Management" → "Paint Line Allocation" → "Paint In Line Allocation" →
+  back to **"Line Management"**, since the page's job is a multi-stage
+  overview, not just Paint In.
+- **`PaintInPage.tsx`** (`/paint-in`) is the Paint employee's own focused
+  entry page: no tabs, no Admin content, and only one button — "Paint In
+  Records →" (a real link to `/paint-in/history`, with no disabled
+  placeholders for the other stages, since this page is scoped to exactly
+  what a Paint employee does). Just their own assigned coaches, the
+  line/slot grid, and the submission form. Paint In is date-only (no time
+  picker — fixed `00:00`, same as Shell Outturn/Furnishing In).
+
+Both pages share the same legend (green "Available", amber "Booked" — a
+coach assigned to a Paint employee via the assignment queue but not yet
+placed in a specific slot, shown as a count badge from `paint-in/lines.php`'s
+`booked_count`, not a per-slot state, since assignment isn't slot-specific;
+"Occupied" was dropped from the legend as redundant, though a slot with a
+coach already placed in it still renders disabled/orange in the grid itself,
+just without a legend entry calling that color out by name) and the same
+`getPaintLines()`/`getPaintInWorklist()` API calls, but the two page
+components themselves share no code.
 
 The Dashboard (`HomePage`) no longer shows the "Welcome, name / ROLE" text
-block (redundant with the header). Admin's stat grid grew from 3 to 7 tiles
-(added Pending Shell Outturn, Awaiting Furnishing Out, Awaiting Paint In,
-Queued for Assignment — all system-wide via `admin/dashboard_stats.php`,
-computed with dedicated queries rather than reusing the role-gated worklist
-endpoints) so the page isn't mostly empty space. **Recent Activity**
-(`GET /api/dashboard/recent-activity.php`, limit bumped 10→30) now has a
-filter box above it that searches coach number/type/performer/type client-side.
+block (redundant with the header). Admin's stat grid has 11 tiles (Pending
+Shell Outturn, Awaiting Furnishing In, Awaiting Paint In, Awaiting Paint Out,
+Awaiting Assembly In, Awaiting Assembly Out, Queued for Assignment, plus the
+3 static counts — all system-wide via `admin/dashboard_stats.php`, computed
+with dedicated queries rather than reusing the role-gated worklist endpoints)
+so the page isn't mostly empty space. **Recent Activity** (`GET /api/dashboard/recent-activity.php`, limit
+bumped 10→30) now has a filter box above it that searches coach
+number/type/performer/type client-side; each non-Admin role's feed is scoped
+to work *they* recorded (`WHERE recorded_by_user_id = :user_id`) — Shell
+Production sees their own Shell Outturns, Furnishing sees their own
+Furnishing In records, Paint sees their own Paint Ins.
 
-## Furnishing Out gates Paint In
+## Furnishing In is a manual, skill-gated step
 
-A new `furnishing_out_transactions` table sits between Furnishing In and
-Paint In. Shell Outturn still auto-opens Furnishing In (identical timestamp,
-same as before), but a coach is only eligible for Paint In once the
-Furnishing role explicitly records **Furnishing Out** for it
-(`backend/api/furnishing-out/create.php`) — enforced both in the Paint In
-worklist query and in `paint-in/create.php`'s validation (409 otherwise).
+Shell Outturn does **not** auto-create the Furnishing In record. Submitting
+Shell Outturn only queues the coach to a skilled Furnishing employee
+(`coach_assignments` module `FURNISHING`); that employee's own submission on
+`/furnishing-in` — where the date field starts out pre-filled with the Shell
+Outturn date but is fully editable before submitting — is what actually
+creates the `furnishing_in_records` row (`backend/api/furnishing-in/create.php`)
+and makes the coach Paint-In-eligible (queues it to a skilled Paint employee).
+This was a deliberate correction: an earlier iteration made Furnishing In
+fully automatic (same transaction as Shell Outturn, identical timestamp,
+zero Furnishing-role action) — that turned out to be wrong for how this
+actually works day-to-day, so it's back to being its own operation with its
+own skill (`FURNISHING_IN`), just with the date conveniently pre-filled
+rather than manually typed from scratch.
 
-## Skill-based auto-assignment queue (Furnishing + Paint)
+## Auto-assignment queue (Furnishing, Paint, Paint Out, Assembly In, Assembly Out)
 
-Implements the doc's `User -> Role -> Coach Type -> Skill` hierarchy, scoped
-to the two modules where it matters right now:
+`coach_assignments` (`backend/lib/Assignment.php`) tracks who owns the *next
+action* on a coach, one row per (coach, module): FURNISHING → Furnishing In,
+PAINT → Paint In, PAINT_OUT → Paint Out, ASSEMBLY_IN → Assembly In,
+ASSEMBLY_OUT → Assembly Out. A coach becomes eligible the moment the
+*previous* stage is recorded (Shell Outturn → FURNISHING, Furnishing In →
+PAINT, Paint In → PAINT_OUT, Paint Out → ASSEMBLY_IN, Assembly In →
+ASSEMBLY_OUT), and is auto-assigned to the least-loaded eligible employee
+with capacity, or left `QUEUED` if none have room. Completing the action
+marks that assignment `COMPLETED`, queues/assigns the coach for the next
+stage, and pulls the completing employee's oldest matching `QUEUED` coach
+into their now-freed capacity.
 
-- **`skills`** (admin master, `/admin/users`, per-role skill
-  checkboxes) — one skill per (role, coach category), e.g. "LHB AC
-  Furnishing". **`user_skills`** assigns them to employees, editable per user
-  via "Edit Skills".
-- **`coach_assignments`** (`backend/lib/Assignment.php`) tracks who owns the
-  *next action* on a coach: for FURNISHING, who should record Furnishing Out;
-  for PAINT, who should record Paint In. A coach becomes eligible the moment
-  Furnishing In (→ FURNISHING assignment) or Furnishing Out (→ PAINT
-  assignment) is recorded, and is auto-assigned to the least-loaded eligible,
-  under-capacity employee — **max 5 concurrently ASSIGNED per employee per
-  module** — or left `QUEUED` if everyone with that skill is full.
-- Completing the action (Furnishing Out / Paint In submit) marks that
-  assignment `COMPLETED` and immediately pulls the employee's oldest matching
-  `QUEUED` coach into the freed slot — verified end-to-end via API tests
-  (6 same-category coaches → 5 assigned + 1 queued → completing one
-  auto-promotes the queued one).
-- Furnishing In / Paint In worklists now show **only coaches assigned to the
-  logged-in employee** (not the whole eligible pool), with a "Capacity: X/5
-  assigned · Y queued" badge (`GET /api/assignments/my-summary.php`).
-  `furnishing-out/create.php` and `paint-in/create.php` both reject (403) if
-  the coach isn't currently assigned to the caller.
-- Creating a user or editing their skills (`admin/users_create.php`,
-  `admin/user_skills_update.php`) immediately runs a capacity-fill pass, so a
-  newly skilled employee can pick up existing queued work right away.
-- The Create User form only shows skill checkboxes when the selected role is
-  Furnishing or Paint (a hint explains why for other roles) — if that's not
-  showing, confirm the role dropdown actually has Furnishing/Paint selected.
+Two matching strategies coexist, selected per module in `Assignment.php` via
+`SKILL_MODULES` (module → role_code) and `MATRIX_MODULES` (module → flag
+column) lookup tables:
+
+- **Skill-based** (`FURNISHING`, `ASSEMBLY_IN`, `ASSEMBLY_OUT`) —
+  `skills`/`user_skills` at coach-CATEGORY granularity (LHB AC / LHB
+  Non-AC), edited via Skill Master + "Edit Skills" on `/admin/users`.
+  FURNISHING is **uncapped** (a single employee handles everything, nothing
+  ever `QUEUED`); ASSEMBLY_IN/ASSEMBLY_OUT are **capped at 5** like Paint,
+  since Assembly has the same multi-line, multi-worker physical setup.
+  ASSEMBLY_IN and ASSEMBLY_OUT are tracked as separate skills/operations even
+  though both map to role `ASSEMBLY_PRODUCTION` — a role no longer implies a
+  single module, which is why `SKILL_MODULES` exists as its own lookup
+  instead of assuming `module === role_code` (that assumption held for
+  Furnishing only, back when Furnishing was the only skill-based module).
+- **Matrix-based** (`PAINT`, `PAINT_OUT`) — `paint_type_assignments` at
+  coach-TYPE granularity (e.g. LWCBAC, not just "LHB AC"), edited via the
+  **Supervisor-Coach Assignments Matrix** (`/admin/paint-assignments`, Admin
+  only) — `can_in` for PAINT, `can_out` for PAINT_OUT, same table, same
+  employee pool (role PAINT). **Capped at 5** concurrently `ASSIGNED` coaches
+  per employee — verified end-to-end via API tests (6 same-category coaches
+  → 5 assigned + 1 queued → completing one auto-promotes the queued one).
+
+Every entry page shows **only coaches assigned to the logged-in employee**
+(not the whole eligible pool), with an "Assigned: X/5" (or "X" for
+uncapped Furnishing) badge (`GET /api/assignments/my-summary.php?module=...`
+— `module` is required for any role covering more than one stage: PAINT
+passes `PAINT` or `PAINT_OUT`, ASSEMBLY_PRODUCTION passes `ASSEMBLY_IN` or
+`ASSEMBLY_OUT`). Every stage's `create.php` rejects (403) if the coach isn't
+currently assigned to the caller. Verified live end-to-end: a single coach
+walked through Shell Outturn → Furnishing In → Paint In (paint1) → Paint Out
+(paint2) → Assembly In (assy1) → Assembly Out (assy1), with each submission
+correctly routing the coach to the next stage's assigned employee.
+
+## Supervisor-Coach Assignments (In-Out) Matrix — Paint only
+
+`/admin/paint-assignments` (Admin only) — a grid of coach type (row) ×
+Paint employee (column), each cell an independent **IN** / **OUT** toggle
+(green = can do Paint In for that type, red = can do Paint Out — both live).
+Row actions (`All IN` / `All OUT` / `Both` / clear) and column actions
+(bulk-set one employee's whole row) speed up configuring many cells at once;
+**Save** replaces the entire `paint_type_assignments` table with the current
+grid state in one request
+(`backend/api/admin/paint_type_assignments_save.php`) — simpler and safer
+than diffing, since the whole grid is always submitted together.
+
+This replaced Paint's old category-level Skill Master entry entirely (no
+more "Paint In - LHB AC" style skills) — Furnishing/Assembly are untouched
+and still use the plain skill checkboxes (see the Skill Master section
+below — "Assembly In"/"Assembly Out" are now selectable operations there,
+replacing the old placeholder "Assembly Operation"). Demo config: **paint1 =
+Paint In**, **paint2 = Paint Out**, both across every coach type — verified
+live end-to-end (see previous section).
+
+A Paint employee (`/paint-in` or `/paint-out`) sees only their own assigned
+coaches and that stage's line/slot grid, nothing else. Admin sees the full
+4-tab overview instead (see "Layout" above).
+
+## Per-employee stage access (Paint In vs. Paint Out, Assembly In vs. Assembly Out)
+
+A role can now cover more than one pipeline stage (PAINT: Paint In *and*
+Paint Out; ASSEMBLY_PRODUCTION: Assembly In *and* Assembly Out), but a given
+**login** is not automatically capable of all of them — separate employees
+are meant to handle separate directions (e.g. paint1 only does Paint In,
+paint2 only does Paint Out), driven entirely by whether that employee has a
+matrix cell (`paint_type_assignments.can_in`/`can_out`) or a skill
+(`ASSEMBLY_IN`/`ASSEMBLY_OUT`) for at least one coach type/category — not by
+their role alone.
+
+`GET /api/assignments/my-capabilities.php` (`Assignment::userCapableModules()`)
+returns the list of modules the *logged-in employee specifically* is
+configured for, reusing the same `SKILL_MODULES`/`MATRIX_MODULES` lookup
+`Assignment.php` already uses for routing coaches. `AuthContext` fetches this
+once per login/session and exposes it as `capabilities: string[]`. Three
+places consume it:
+
+- **Sidebar nav** (`AppShell`'s `NAV_ITEMS`) — each stage-specific item
+  carries a `module` field; `visibleNavItems()` filters by role **and**
+  capability, so paint1's sidebar shows only "Paint In", paint2's shows only
+  "Paint Out" — verified live (paint1 has no "Paint Out" link, paint2 has no
+  "Paint In" link).
+- **Routes** — `ProtectedRoute` takes an optional `requiredModule` prop;
+  `/paint-in`, `/paint-out`, `/assembly-in`, `/assembly-out` (and
+  `/furnishing-in`, for consistency) each pass their module. Direct
+  navigation to a stage the employee isn't configured for renders "Not
+  configured for this stage" instead of the page — verified live (paint1
+  hitting `/paint-out` directly).
+- **Dashboard stat cards** (`HomePage`) — `PaintStats`/`AssemblyStats` are
+  thin wrappers that render `PaintInStats`/`PaintOutStats` (or
+  `AssemblyInStats`/`AssemblyOutStats`) only if the capability is present,
+  so a Paint-Out-only login never sees "Awaiting Paint In" tiles linking to
+  a page it can't reach.
+
+Furnishing is unaffected in practice (furnish1 has both category skills
+seeded, so always capable) but goes through the same generic mechanism for
+consistency — there's no special-casing for "the uncapped module."
+Demo config note: **assy1** currently holds both `ASSEMBLY_IN` and
+`ASSEMBLY_OUT` skills (it's the only seeded Assembly Production login), so
+it correctly sees both nav items/dashboards — the split only becomes visible
+once a second, differently-configured Assembly employee exists, same as
+paint1/paint2 already demonstrate for Paint.
 
 ## Profile (all roles)
 
@@ -172,7 +323,8 @@ stored).
 The doc's Admin responsibility is "create/maintain skill master **and**
 assign skills to users" — we'd only built the second half. `admin/users.php`
 now has a **Skill Master** section (`POST /api/admin/skills_create.php`):
-name + role (Furnishing/Paint) + coach category, backed by the `skills`
+name + operation (Furnishing In / Assembly In / Assembly Out — Paint uses
+its own matrix instead, see above) + coach category, backed by the `skills`
 table. This meant relaxing `skills`' unique constraint from
 `(role_code, coach_category_id)` to `(role_code, coach_category_id, name)` —
 multiple distinct skills can now cover the same role+category (e.g. two
@@ -244,19 +396,20 @@ email → 6-digit OTP → new password + confirm → success → back to Sign In
 
 ## Notes
 
-- **Shell Outturn is date-only now** (no time picker) — `ShellOutturnEntryPage`
-  sends a fixed `00:00` time to `shell-outturn/create.php`, which already
-  tolerated a missing/invalid time by defaulting it. Furnishing In's date
-  (mirrored from Shell Outturn) displays date-only too (`formatDateOnly` in
-  `utils/dateFormat.ts`); Furnishing Out and Paint In still have real
-  date+time entry since those weren't asked to change.
-- `shell_to_furnishing_days` is always `0` in `fixed_schedules` — Shell Outturn
-  and Furnishing In are the same event, enforced in
-  `backend/api/shell-outturn/create.php` by writing both rows with the
-  identical datetime in one DB transaction.
-- Paint In slots are permanently occupied once used in this phase (no Paint
-  Out yet — that's a future phase, stubbed as a placeholder tab in Line
-  Management).
+- **Shell Outturn and Furnishing In are both date-only** (no time picker) —
+  both send a fixed `00:00` time to their `create.php` endpoints, which
+  already tolerated a missing/invalid time by defaulting it; both display
+  date-only too (`formatDateOnly` in `utils/dateFormat.ts`). Paint In still
+  has real date+time entry since it wasn't asked to change.
+- `shell_to_furnishing_days` in `fixed_schedules` is a *planning target*, not
+  an enforced rule — Furnishing In's date pre-fills from Shell Outturn but is
+  editable (see "Furnishing In is a manual, skill-gated step" above), so the
+  two dates can legitimately differ.
+- Paint In slots are permanently occupied for the life of this phase — Paint
+  Out does **not** free the Paint In slot it came from; it books a slot in
+  its own independent `paint_out_lines` pool instead (same for Assembly In
+  and Assembly Out). A coach's full journey is a straight line through four
+  separate 100-slot pools, not a single pool it enters and exits repeatedly.
 - Shell Outturn Entry (`/shell-outturn`) uses a BO dropdown → coach dropdown →
   calendar flow, mirroring the legacy CCTS Shell OT Entry screen's shape but
   with a real calendar picker instead of date buttons. Shell Production
@@ -268,10 +421,14 @@ email → 6-digit OTP → new password + confirm → success → back to Sign In
   emblem (public domain, Wikimedia Commons) — `frontend/src/assets/indian-railways-logo.svg`.
   Visual design (button radius, card shape, layout rhythm) was cross-checked
   against the live `srm-approval.vercel.app` reference site's login page CSS.
-- Access control is role-level (route/API gated by role code) plus, for
-  Furnishing/Paint, per-employee assignment via the skill queue above.
-  Coach-type/operation-stage-level filtering for other roles (Assembly,
-  Inspection, etc.) is deferred until those modules exist.
-- Out of scope for this phase: Assembly, Mechanical/Electrical Inspection,
-  Shunting, Vendor/SNI, Final Inspection, Outturn/Dispatch, Paint Out, and
+- Access control is role-level (route/API gated by role code) plus
+  per-employee assignment via the queue above, for every live module
+  (Furnishing, Paint, Paint Out, Assembly In, Assembly Out).
+  Coach-type/operation-stage-level filtering for other roles (Inspection,
+  etc.) is deferred until those modules exist.
+- **"Assembly Operations"** — a stage between Assembly In and Assembly Out —
+  is explicitly deferred to a future phase; Assembly Out is currently the
+  end of the pipeline.
+- Out of scope for this phase: Mechanical/Electrical Inspection, Shunting,
+  Vendor/SNI, Final Inspection, Outturn/Dispatch, Assembly Operations, and
   full RBAC configuration screens.

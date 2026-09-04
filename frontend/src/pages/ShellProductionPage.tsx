@@ -28,7 +28,7 @@ export function ShellProductionPage() {
       )}
 
       {coaches && coaches.length > 0 && (
-        <div className="mt-4 overflow-x-auto rounded border border-slate-200 bg-white">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>

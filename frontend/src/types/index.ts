@@ -38,7 +38,7 @@ export interface AdminUserRow {
   skills: Array<{ id: number; name: string }>;
 }
 
-export type OperationCode = "FURNISHING_OUT" | "PAINT_IN" | "PAINT_OUT" | "ASSEMBLY_OP";
+export type OperationCode = "FURNISHING_IN" | "ASSEMBLY_IN" | "ASSEMBLY_OUT";
 
 export interface Skill {
   id: number;
@@ -51,7 +51,7 @@ export interface Skill {
 
 export interface AssignmentSummary {
   assigned_count: number;
-  capacity: number;
+  capacity: number | null; // null = unlimited (e.g. FURNISHING)
   queued_count: number;
 }
 
@@ -77,9 +77,27 @@ export interface WorklistCoach {
 
 export interface ShellOutturnCreateResponse {
   shell_outturn_id: number;
-  furnishing_in_id: number;
   coach_number: string;
   outturn_datetime: string;
+}
+
+export interface ShellOutturnBatchResult {
+  shell_outturn_id: number;
+  coach_number: string;
+}
+
+export interface ShellOutturnBatchCreateResponse {
+  outturn_datetime: string;
+  results: ShellOutturnBatchResult[];
+}
+
+export interface ShellOutturnListRow {
+  shell_outturn_id: number;
+  coach_number: string;
+  coach_type: string;
+  outturn_datetime: string;
+  recorded_by: string;
+  status: string;
 }
 
 export interface FurnishingInRow {
@@ -90,14 +108,21 @@ export interface FurnishingInRow {
   furnishing_in_datetime: string;
   shell_outturn_datetime: string;
   recorded_by: string;
-  furnishing_out_datetime: string | null;
-  status: "FURNISHING_IN" | "FURNISHING_OUT";
+  paint_in_datetime: string | null;
+  status: "FURNISHING_IN" | "PAINT_IN";
 }
 
-export interface FurnishingOutCreateResponse {
-  furnishing_out_id: number;
+// A coach assigned to the current Furnishing employee, awaiting Furnishing
+// In submission — same shape as WorklistCoach plus the Shell Outturn date,
+// which pre-fills (but doesn't lock) the Furnishing In date field.
+export interface FurnishingInWorklistCoach extends WorklistCoach {
+  shell_outturn_datetime: string;
+}
+
+export interface FurnishingInCreateResponse {
+  furnishing_in_id: number;
   coach_number: string;
-  furnishing_out_datetime: string;
+  furnishing_in_datetime: string;
 }
 
 export interface PaintLineSlot {
@@ -124,12 +149,131 @@ export interface PaintInCreateResponse {
   paint_in_datetime: string;
 }
 
+export interface PaintInListRow {
+  paint_in_id: number;
+  coach_number: string;
+  coach_type: string;
+  paint_line: string;
+  slot_number: number;
+  paint_in_datetime: string;
+  recorded_by: string;
+  status: string;
+}
+
+// Paint Out / Assembly In / Assembly Out each get their own independent
+// 10-line x 10-slot pool, structurally identical to PaintLine/PaintLineSlot
+// above — same shape, different id field name per stage.
+export interface PaintOutLineSlot {
+  slot_id: number;
+  slot_number: number;
+  is_occupied: boolean;
+  coach_number: string | null;
+}
+
+export interface PaintOutLine {
+  paint_out_line_id: number;
+  code: string;
+  name: string;
+  total_slots: number;
+  occupied_slots: number;
+  slots: PaintOutLineSlot[];
+}
+
+export interface PaintOutCreateResponse {
+  paint_out_id: number;
+  coach_number: string;
+  paint_out_line: string;
+  slot_number: number;
+  paint_out_datetime: string;
+}
+
+export interface PaintOutListRow {
+  paint_out_id: number;
+  coach_number: string;
+  coach_type: string;
+  paint_out_line: string;
+  slot_number: number;
+  paint_out_datetime: string;
+  recorded_by: string;
+  status: string;
+}
+
+export interface AssemblyInLineSlot {
+  slot_id: number;
+  slot_number: number;
+  is_occupied: boolean;
+  coach_number: string | null;
+}
+
+export interface AssemblyInLine {
+  assembly_in_line_id: number;
+  code: string;
+  name: string;
+  total_slots: number;
+  occupied_slots: number;
+  slots: AssemblyInLineSlot[];
+}
+
+export interface AssemblyInCreateResponse {
+  assembly_in_id: number;
+  coach_number: string;
+  assembly_in_line: string;
+  slot_number: number;
+  assembly_in_datetime: string;
+}
+
+export interface AssemblyInListRow {
+  assembly_in_id: number;
+  coach_number: string;
+  coach_type: string;
+  assembly_in_line: string;
+  slot_number: number;
+  assembly_in_datetime: string;
+  recorded_by: string;
+  status: string;
+}
+
+export interface AssemblyOutLineSlot {
+  slot_id: number;
+  slot_number: number;
+  is_occupied: boolean;
+  coach_number: string | null;
+}
+
+export interface AssemblyOutLine {
+  assembly_out_line_id: number;
+  code: string;
+  name: string;
+  total_slots: number;
+  occupied_slots: number;
+  slots: AssemblyOutLineSlot[];
+}
+
+export interface AssemblyOutCreateResponse {
+  assembly_out_id: number;
+  coach_number: string;
+  assembly_out_line: string;
+  slot_number: number;
+  assembly_out_datetime: string;
+}
+
+export interface AssemblyOutListRow {
+  assembly_out_id: number;
+  coach_number: string;
+  coach_type: string;
+  assembly_out_line: string;
+  slot_number: number;
+  assembly_out_datetime: string;
+  recorded_by: string;
+  status: string;
+}
+
 export interface ApiErrorBody {
   error: string;
 }
 
 export interface RecentActivityRow {
-  type: "SHELL_OUTTURN" | "FURNISHING_OUT" | "PAINT_IN";
+  type: "SHELL_OUTTURN" | "FURNISHING_IN" | "PAINT_IN";
   coach_number: string;
   coach_type: string;
   occurred_at: string;
@@ -138,8 +282,11 @@ export interface RecentActivityRow {
 
 export interface AdminDashboardStats {
   pending_shell_outturn: number;
-  awaiting_furnishing_out: number;
+  awaiting_furnishing_in: number;
   awaiting_paint_in: number;
+  awaiting_paint_out: number;
+  awaiting_assembly_in: number;
+  awaiting_assembly_out: number;
   queued_for_assignment: number;
 }
 
@@ -189,4 +336,34 @@ export interface ProductionOrderCreateResponse {
   bo_number: string;
   bo_item: number;
   coach_count: number;
+}
+
+// Supervisor-Coach Assignments (In-Out) Matrix — Paint Shop only. Rows are
+// coach types, columns are Paint employees; each cell is an independent
+// can_in/can_out toggle. This is what Assignment::assignOrQueue() reads for
+// module 'PAINT' (Furnishing still uses the plain Skill/user_skills model).
+export interface PaintMatrixCoachType {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface PaintMatrixUser {
+  id: number;
+  employee_no: string;
+  full_name: string;
+  username: string;
+}
+
+export interface PaintMatrixCell {
+  user_id: number;
+  coach_type_id: number;
+  can_in: boolean;
+  can_out: boolean;
+}
+
+export interface PaintMatrixResponse {
+  coach_types: PaintMatrixCoachType[];
+  users: PaintMatrixUser[];
+  assignments: PaintMatrixCell[];
 }

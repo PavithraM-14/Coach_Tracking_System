@@ -49,19 +49,20 @@ CREATE TABLE coach_categories (
   is_active TINYINT(1) NOT NULL DEFAULT 1
 );
 
--- A skill qualifies a user to perform a specific OPERATION (Furnishing Out,
--- Paint In, ...) on coaches of a given category. Admin-maintained master, per
--- the doc's User -> Role -> Coach Type -> Skill hierarchy. `operation` is the
--- thing that's actually matched for assignment (see backend/lib/Assignment.php)
--- — `role_code` is derived from it and kept alongside since it's what
--- coach_assignments.module / the login role are keyed on. Paint In and Paint
--- Out are both role PAINT but distinct operations, which is exactly why
--- operation has to be its own column and not just inferred from role.
+-- A skill qualifies a user to perform a specific OPERATION (Furnishing In,
+-- Assembly Operation) on coaches of a given CATEGORY. Admin-maintained
+-- master, per the doc's User -> Role -> Coach Type -> Skill hierarchy.
+-- `operation` is the thing that's actually matched for assignment (see
+-- backend/lib/Assignment.php) — `role_code` is derived from it and kept
+-- alongside since it's what coach_assignments.module / the login role are
+-- keyed on. Paint does NOT use this table — it has its own, finer-grained
+-- (coach TYPE, not category) `paint_type_assignments` matrix instead, with
+-- independent In/Out flags per cell (see that table's comment below).
 CREATE TABLE skills (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
-  operation VARCHAR(30) NOT NULL,        -- 'FURNISHING_OUT', 'PAINT_IN', 'PAINT_OUT', 'ASSEMBLY_OP'
-  role_code VARCHAR(30) NOT NULL,        -- derived from operation: FURNISHING, PAINT, ASSEMBLY_PRODUCTION
+  operation VARCHAR(30) NOT NULL,        -- 'FURNISHING_IN', 'ASSEMBLY_OP'
+  role_code VARCHAR(30) NOT NULL,        -- derived from operation: FURNISHING, ASSEMBLY_PRODUCTION
   coach_category_id INT NOT NULL,
   UNIQUE KEY uq_op_category_name (operation, coach_category_id, name),
   FOREIGN KEY (coach_category_id) REFERENCES coach_categories(id)
@@ -117,6 +118,60 @@ CREATE TABLE paint_line_slots (
   FOREIGN KEY (paint_line_id) REFERENCES paint_lines(id)
 );
 
+-- Paint Out, Assembly In and Assembly Out each get their own independent
+-- 10-line x 10-slot pool, structurally identical to paint_lines/
+-- paint_line_slots above (confirmed: Assembly lines match Paint's line
+-- count). Independent tables (not a shared/reused slot) keep each stage's
+-- occupancy simple — a coach frees its Paint In slot implicitly by moving on
+-- to Paint Out's own pool, no cross-stage slot-freeing logic needed.
+CREATE TABLE paint_out_lines (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(10) NOT NULL UNIQUE,
+  name VARCHAR(50) NOT NULL,
+  total_slots INT NOT NULL DEFAULT 10,
+  is_active TINYINT(1) NOT NULL DEFAULT 1
+);
+
+CREATE TABLE paint_out_line_slots (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  paint_out_line_id INT NOT NULL,
+  slot_number INT NOT NULL,
+  UNIQUE KEY uq_line_slot (paint_out_line_id, slot_number),
+  FOREIGN KEY (paint_out_line_id) REFERENCES paint_out_lines(id)
+);
+
+CREATE TABLE assembly_in_lines (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(10) NOT NULL UNIQUE,
+  name VARCHAR(50) NOT NULL,
+  total_slots INT NOT NULL DEFAULT 10,
+  is_active TINYINT(1) NOT NULL DEFAULT 1
+);
+
+CREATE TABLE assembly_in_line_slots (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  assembly_in_line_id INT NOT NULL,
+  slot_number INT NOT NULL,
+  UNIQUE KEY uq_line_slot (assembly_in_line_id, slot_number),
+  FOREIGN KEY (assembly_in_line_id) REFERENCES assembly_in_lines(id)
+);
+
+CREATE TABLE assembly_out_lines (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(10) NOT NULL UNIQUE,
+  name VARCHAR(50) NOT NULL,
+  total_slots INT NOT NULL DEFAULT 10,
+  is_active TINYINT(1) NOT NULL DEFAULT 1
+);
+
+CREATE TABLE assembly_out_line_slots (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  assembly_out_line_id INT NOT NULL,
+  slot_number INT NOT NULL,
+  UNIQUE KEY uq_line_slot (assembly_out_line_id, slot_number),
+  FOREIGN KEY (assembly_out_line_id) REFERENCES assembly_out_lines(id)
+);
+
 CREATE TABLE production_orders (          -- SAP/BO Production Plan, read-only reference
   id INT AUTO_INCREMENT PRIMARY KEY,
   plant_id INT NOT NULL,
@@ -164,11 +219,18 @@ CREATE TABLE shell_outturn_transactions (
   FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
 );
 
+-- Furnishing In is a manual step, not automatic: Shell Outturn only queues
+-- the coach for a skilled Furnishing employee (coach_assignments module
+-- 'FURNISHING'); this row is created when that employee actually submits —
+-- furnishing_in_datetime defaults to the Shell Outturn date but is editable,
+-- so it does not have to equal shell_outturn_transactions.outturn_datetime.
+-- No separate Furnishing Out table — this is the only Furnishing record, and
+-- a coach becomes Paint-In-eligible the moment it exists.
 CREATE TABLE furnishing_in_records (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coach_id INT NOT NULL UNIQUE,
   shell_outturn_id INT NOT NULL UNIQUE,
-  furnishing_in_datetime DATETIME NOT NULL,   -- must equal shell_outturn_transactions.outturn_datetime
+  furnishing_in_datetime DATETIME NOT NULL,
   recorded_by_user_id INT NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -177,24 +239,10 @@ CREATE TABLE furnishing_in_records (
   FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
 );
 
-CREATE TABLE furnishing_out_transactions (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  coach_id INT NOT NULL UNIQUE,
-  furnishing_in_id INT NOT NULL UNIQUE,
-  furnishing_out_datetime DATETIME NOT NULL,
-  remarks VARCHAR(255) NULL,
-  recorded_by_user_id INT NOT NULL,
-  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (coach_id) REFERENCES coaches(id),
-  FOREIGN KEY (furnishing_in_id) REFERENCES furnishing_in_records(id),
-  FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
-);
-
 CREATE TABLE paint_in_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coach_id INT NOT NULL UNIQUE,
-  furnishing_out_id INT NOT NULL,
+  furnishing_in_id INT NOT NULL,
   paint_line_id INT NOT NULL,
   slot_id INT NOT NULL UNIQUE,
   paint_in_datetime DATETIME NOT NULL,
@@ -203,24 +251,92 @@ CREATE TABLE paint_in_transactions (
   status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (coach_id) REFERENCES coaches(id),
-  FOREIGN KEY (furnishing_out_id) REFERENCES furnishing_out_transactions(id),
+  FOREIGN KEY (furnishing_in_id) REFERENCES furnishing_in_records(id),
   FOREIGN KEY (paint_line_id) REFERENCES paint_lines(id),
   FOREIGN KEY (slot_id) REFERENCES paint_line_slots(id),
   FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
 );
 
+-- Paint Out: submitted by a Paint employee (paint_type_assignments.can_out)
+-- once a coach's Paint In is done. Occupies its own paint_out_lines slot
+-- (independent pool from Paint In's), and completing it queues the coach for
+-- Assembly In.
+CREATE TABLE paint_out_transactions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL UNIQUE,
+  paint_in_id INT NOT NULL,
+  paint_out_line_id INT NOT NULL,
+  slot_id INT NOT NULL UNIQUE,
+  paint_out_datetime DATETIME NOT NULL,
+  remarks VARCHAR(255) NULL,
+  recorded_by_user_id INT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (paint_in_id) REFERENCES paint_in_transactions(id),
+  FOREIGN KEY (paint_out_line_id) REFERENCES paint_out_lines(id),
+  FOREIGN KEY (slot_id) REFERENCES paint_out_line_slots(id),
+  FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
+);
+
+-- Assembly In: submitted by an ASSEMBLY_PRODUCTION employee (skills/
+-- user_skills, operation ASSEMBLY_IN) once a coach's Paint Out is done.
+CREATE TABLE assembly_in_transactions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL UNIQUE,
+  paint_out_id INT NOT NULL,
+  assembly_in_line_id INT NOT NULL,
+  slot_id INT NOT NULL UNIQUE,
+  assembly_in_datetime DATETIME NOT NULL,
+  remarks VARCHAR(255) NULL,
+  recorded_by_user_id INT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (paint_out_id) REFERENCES paint_out_transactions(id),
+  FOREIGN KEY (assembly_in_line_id) REFERENCES assembly_in_lines(id),
+  FOREIGN KEY (slot_id) REFERENCES assembly_in_line_slots(id),
+  FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
+);
+
+-- Assembly Out: submitted by an ASSEMBLY_PRODUCTION employee (operation
+-- ASSEMBLY_OUT) once a coach's Assembly In is done. End of the pipeline for
+-- now — "Assembly Operations" (a stage between Assembly In and Assembly Out)
+-- is deferred to a future phase.
+CREATE TABLE assembly_out_transactions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL UNIQUE,
+  assembly_in_id INT NOT NULL,
+  assembly_out_line_id INT NOT NULL,
+  slot_id INT NOT NULL UNIQUE,
+  assembly_out_datetime DATETIME NOT NULL,
+  remarks VARCHAR(255) NULL,
+  recorded_by_user_id INT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (assembly_in_id) REFERENCES assembly_in_transactions(id),
+  FOREIGN KEY (assembly_out_line_id) REFERENCES assembly_out_lines(id),
+  FOREIGN KEY (slot_id) REFERENCES assembly_out_line_slots(id),
+  FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
+);
+
 -- Tracks who is responsible for the NEXT action on a coach within a module
--- (Furnishing Out for FURNISHING, Paint In for PAINT). Created the moment a
--- coach becomes eligible for that module; a matching under-capacity employee
--- (role + skill covering the coach's category) is assigned immediately,
--- otherwise the row sits QUEUED until capacity frees up. Capacity (max 5
--- concurrent ASSIGNED rows per user per module) is enforced in application
--- code, not a DB constraint, since MySQL check constraints can't easily
--- express "count of related rows".
+-- (Furnishing In for FURNISHING, Paint In for PAINT, Paint Out for
+-- PAINT_OUT, Assembly In for ASSEMBLY_IN, Assembly Out for ASSEMBLY_OUT).
+-- Created the moment a coach becomes eligible for that module; a matching
+-- under-capacity employee is assigned immediately, otherwise the row sits
+-- QUEUED until capacity frees up. Capacity is per-module (see
+-- Assignment::MODULE_CAPACITY): PAINT/PAINT_OUT/ASSEMBLY_IN/ASSEMBLY_OUT cap
+-- at 5 concurrent ASSIGNED rows per user (parallel workers across lines);
+-- FURNISHING is uncapped (one employee handles all of it, so every eligible
+-- coach goes straight to them — never QUEUED). Enforced in application code,
+-- not a DB constraint, since MySQL check constraints can't easily express
+-- "count of related rows".
 CREATE TABLE coach_assignments (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coach_id INT NOT NULL,
-  module VARCHAR(20) NOT NULL,           -- 'FURNISHING' or 'PAINT'
+  module VARCHAR(20) NOT NULL,           -- FURNISHING, PAINT, PAINT_OUT, ASSEMBLY_IN, ASSEMBLY_OUT
   assigned_user_id INT NULL,             -- NULL while QUEUED
   status VARCHAR(20) NOT NULL DEFAULT 'QUEUED', -- QUEUED, ASSIGNED, COMPLETED
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -229,6 +345,24 @@ CREATE TABLE coach_assignments (
   UNIQUE KEY uq_coach_module (coach_id, module),
   FOREIGN KEY (coach_id) REFERENCES coaches(id),
   FOREIGN KEY (assigned_user_id) REFERENCES users(id)
+);
+
+-- Supervisor-Coach Assignments (In-Out) Matrix, Paint Shop only: which Paint
+-- employee handles Paint In / Paint Out for which coach TYPE (finer-grained
+-- than the category-level `skills` table Furnishing still uses — Paint
+-- switched to this dedicated matrix instead of `skills`/`user_skills`, so
+-- Assignment::assignOrQueue() branches on module: 'PAINT' reads this table,
+-- 'FURNISHING' is untouched). A row with both flags 0 is just deleted rather
+-- than kept — "no assignment" is the absence of a row, not a 0/0 one.
+CREATE TABLE paint_type_assignments (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  coach_type_id INT NOT NULL,
+  can_in TINYINT(1) NOT NULL DEFAULT 0,
+  can_out TINYINT(1) NOT NULL DEFAULT 0,
+  UNIQUE KEY uq_user_type (user_id, coach_type_id),
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (coach_type_id) REFERENCES coach_types(id)
 );
 
 -- Forgot Password: a row per OTP request. The OTP itself is never stored in

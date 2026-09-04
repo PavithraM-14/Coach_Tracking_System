@@ -1,23 +1,146 @@
 import { useEffect, useState } from "react";
-import { PaintBucket, Wrench, Construction } from "lucide-react";
+import { Link } from "react-router-dom";
+import { PaintBucket, Wrench } from "lucide-react";
 import { createPaintIn, getPaintInWorklist, getPaintLines } from "../api/paintIn";
+import { getPaintOutLines } from "../api/paintOut";
+import { getAssemblyInLines } from "../api/assemblyIn";
+import { getAssemblyOutLines } from "../api/assemblyOut";
 import { getMyAssignmentSummary } from "../api/assignments";
-import type { AssignmentSummary, PaintLine, WorklistCoach } from "../types";
+import type {
+  AssemblyInLine,
+  AssemblyOutLine,
+  AssignmentSummary,
+  PaintLine,
+  PaintOutLine,
+  WorklistCoach,
+} from "../types";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { FieldReadOnly } from "../components/ui/FieldReadOnly";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { DatePickerField, formatDateForDisplay } from "../components/ui/DatePickerField";
 
-function ComingSoon({ label }: { label: string }) {
+// Admin's read-only view of a stage's line/slot occupancy — no allocation
+// form, since allocation is only ever done from that stage's own role page
+// (Paint Out, Assembly In, Assembly Out). Generic over the three structurally
+// identical line/slot shapes.
+function ReadOnlyLines<TLine extends { name: string; total_slots: number; occupied_slots: number }>({
+  fetchLines,
+  recordsHref,
+  recordsLabel,
+  description,
+  getKey,
+  getSlots,
+}: {
+  fetchLines: () => Promise<{ data: TLine[]; booked_count: number }>;
+  recordsHref: string;
+  recordsLabel: string;
+  description: string;
+  getKey: (line: TLine) => number;
+  getSlots: (line: TLine) => Array<{ slot_id: number; slot_number: number; is_occupied: boolean; coach_number: string | null }>;
+}) {
+  const [lines, setLines] = useState<TLine[] | null>(null);
+  const [bookedCount, setBookedCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchLines().then((res) => {
+      setLines(res.data);
+      setBookedCount(res.booked_count);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
-    <div className="mt-4 flex flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white py-16 text-center">
-      <Construction className="text-slate-300" size={36} />
-      <p className="mt-3 text-sm font-medium text-slate-600">{label} is not built yet</p>
-      <p className="mt-1 max-w-sm text-xs text-slate-400">
-        Planned for a future phase, following the same line/slot capacity model as Paint In.
-      </p>
+    <div>
+      <p className="mt-1 text-sm text-slate-500">{description}</p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Link to={recordsHref} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
+          {recordsLabel} →
+        </Link>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {bookedCount !== null && (
+          <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+            Booked (system-wide): {bookedCount} coaches assigned, awaiting slot placement
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+          <span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Available
+        </span>
+        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Booked
+        </span>
+      </div>
+
+      {lines && (
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+          {lines.map((line) => (
+            <div key={getKey(line)} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+              <p className="text-sm font-semibold text-slate-800">{line.name}</p>
+              <p className="text-xs text-slate-500">
+                {line.occupied_slots} / {line.total_slots} occupied
+              </p>
+              <div className="mt-2 grid grid-cols-5 gap-1">
+                {getSlots(line).map((slot) => (
+                  <button
+                    key={slot.slot_id}
+                    type="button"
+                    disabled
+                    title={slot.is_occupied ? `Occupied by ${slot.coach_number}` : `Slot ${slot.slot_number}`}
+                    className={`cursor-default rounded py-1 text-xs font-medium ${
+                      slot.is_occupied ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-800"
+                    }`}
+                  >
+                    {slot.slot_number}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
+  );
+}
+
+function PaintOutLinesView() {
+  return (
+    <ReadOnlyLines<PaintOutLine>
+      fetchLines={getPaintOutLines}
+      recordsHref="/paint-out/history"
+      recordsLabel="Paint Out Records"
+      description="Read-only view of current line and slot occupancy. Allocation is performed by Paint role users."
+      getKey={(l) => l.paint_out_line_id}
+      getSlots={(l) => l.slots}
+    />
+  );
+}
+
+function AssemblyInLinesView() {
+  return (
+    <ReadOnlyLines<AssemblyInLine>
+      fetchLines={getAssemblyInLines}
+      recordsHref="/assembly-in/history"
+      recordsLabel="Assembly In Records"
+      description="Read-only view of current line and slot occupancy. Allocation is performed by Assembly Production role users."
+      getKey={(l) => l.assembly_in_line_id}
+      getSlots={(l) => l.slots}
+    />
+  );
+}
+
+function AssemblyOutLinesView() {
+  return (
+    <ReadOnlyLines<AssemblyOutLine>
+      fetchLines={getAssemblyOutLines}
+      recordsHref="/assembly-out/history"
+      recordsLabel="Assembly Out Records"
+      description="Read-only view of current line and slot occupancy. Allocation is performed by Assembly Production role users."
+      getKey={(l) => l.assembly_out_line_id}
+      getSlots={(l) => l.slots}
+    />
   );
 }
 
@@ -32,7 +155,6 @@ function PaintInLines() {
   const [selectedCoachId, setSelectedCoachId] = useState<number | "">("");
   const [selectedSlotId, setSelectedSlotId] = useState<number | "">("");
   const [date, setDate] = useState<Date | undefined>(undefined);
-  const [time, setTime] = useState("09:00");
   const [remarks, setRemarks] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -78,7 +200,7 @@ function PaintInLines() {
         coach_id: selectedCoachId,
         slot_id: selectedSlotId,
         paint_in_date: formatDateForDisplay(date),
-        paint_in_time: time,
+        paint_in_time: "00:00",
         remarks: remarks || undefined,
       });
       setSuccess(
@@ -102,14 +224,41 @@ function PaintInLines() {
     <div>
       <p className="mt-1 text-sm text-slate-500">
         {canAllocate
-          ? "Each paint line has a maximum capacity of 10 coaches. Coaches are auto-assigned to you (up to 5 at a time) once Furnishing Out is recorded — pick a slot for one of your assigned coaches below."
+          ? "Each paint line has a maximum capacity of 10 coaches. Coaches are auto-assigned to you (up to 5 at a time) once Furnishing In is recorded — pick a slot for one of your assigned coaches below."
           : "Read-only view of current line and slot occupancy. Allocation is performed by Paint role users."}
       </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Link
+          to="/paint-in/history"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+        >
+          Paint In Records →
+        </Link>
+        <Link
+          to="/paint-out/history"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+        >
+          Paint Out Records →
+        </Link>
+        <Link
+          to="/assembly-in/history"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+        >
+          Assembly In Records →
+        </Link>
+        <Link
+          to="/assembly-out/history"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+        >
+          Assembly Out Records →
+        </Link>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {canAllocate && summary && (
           <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
-            Booked: {summary.assigned_count} / {summary.capacity} assigned to you
+            Booked: {summary.assigned_count} / {summary.capacity ?? "∞"} assigned to you
             {summary.queued_count > 0 && ` · ${summary.queued_count} queued`}
           </span>
         )}
@@ -120,9 +269,6 @@ function PaintInLines() {
         )}
         <span className="inline-flex items-center gap-1 text-xs text-slate-500">
           <span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Available
-        </span>
-        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-          <span className="h-2.5 w-2.5 rounded-full bg-orange-500" /> Occupied
         </span>
         <span className="inline-flex items-center gap-1 text-xs text-slate-500">
           <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Booked
@@ -165,67 +311,60 @@ function PaintInLines() {
       )}
 
       {canAllocate && (
-      <div className="mt-6 max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Coach (assigned to you)</p>
-        <select
-          value={selectedCoachId}
-          onChange={(e) => setSelectedCoachId(e.target.value ? Number(e.target.value) : "")}
-          className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="">Select a coach</option>
-          {coaches?.map((coach) => (
-            <option key={coach.coach_id} value={coach.coach_id}>
-              {coach.coach_number} — {coach.coach_type}
-            </option>
-          ))}
-        </select>
-        {coaches && coaches.length === 0 && (
-          <p className="mt-1 text-sm text-slate-500">No coaches currently assigned to you for Paint In.</p>
-        )}
+        <div className="mt-6 max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Coach (assigned to you)</p>
+          <select
+            value={selectedCoachId}
+            onChange={(e) => setSelectedCoachId(e.target.value ? Number(e.target.value) : "")}
+            className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select a coach</option>
+            {coaches?.map((coach) => (
+              <option key={coach.coach_id} value={coach.coach_id}>
+                {coach.coach_number} — {coach.coach_type}
+              </option>
+            ))}
+          </select>
+          {coaches && coaches.length === 0 && (
+            <p className="mt-1 text-sm text-slate-500">No coaches currently assigned to you for Paint In.</p>
+          )}
 
-        {selectedCoach && (
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <FieldReadOnly label="Coach Type" value={selectedCoach.coach_type} />
-            <FieldReadOnly label="Plant" value={selectedCoach.plant} />
+          {selectedCoach && (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <FieldReadOnly label="Coach Type" value={selectedCoach.coach_type} />
+              <FieldReadOnly label="Plant" value={selectedCoach.plant} />
+              <FieldReadOnly label="Production Year" value={selectedCoach.production_year} />
+              <FieldReadOnly label="BO Number" value={`${selectedCoach.bo_number}-${selectedCoach.bo_item}`} />
+            </div>
+          )}
+
+          <div className="mt-4 max-w-xs">
+            <DatePickerField label="Paint In Date" value={date} onChange={setDate} />
           </div>
-        )}
 
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <DatePickerField label="Paint In Date" value={date} onChange={setDate} />
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Paint In Time</p>
-            <input
-              type="time"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
+          <div className="mt-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Remarks (optional)</p>
+            <textarea
+              value={remarks}
+              onChange={(e) => setRemarks(e.target.value)}
+              rows={2}
               className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
           </div>
+
+          {fieldError && <ValidationMessage kind="error" message={fieldError} />}
+          {apiError && <ValidationMessage kind="error" message={apiError} />}
+          {success && <ValidationMessage kind="success" message={success} />}
+
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {submitting ? "Submitting..." : "Submit Paint In"}
+          </button>
         </div>
-
-        <div className="mt-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Remarks (optional)</p>
-          <textarea
-            value={remarks}
-            onChange={(e) => setRemarks(e.target.value)}
-            rows={2}
-            className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-          />
-        </div>
-
-        {fieldError && <ValidationMessage kind="error" message={fieldError} />}
-        {apiError && <ValidationMessage kind="error" message={apiError} />}
-        {success && <ValidationMessage kind="success" message={success} />}
-
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={submitting}
-          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {submitting ? "Submitting..." : "Submit Paint In"}
-        </button>
-      </div>
       )}
     </div>
   );
@@ -235,12 +374,27 @@ const TABS = [
   { key: "paint-in", label: "Paint In Lines", icon: PaintBucket },
   { key: "paint-out", label: "Paint Out Lines", icon: PaintBucket },
   { key: "assembly-in", label: "Assembly In Lines", icon: Wrench },
+  { key: "assembly-out", label: "Assembly Out Lines", icon: Wrench },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
 export function LineManagementPage() {
+  const { user } = useAuth();
   const [tab, setTab] = useState<TabKey>("paint-in");
+
+  // Paint employees only ever do Paint In here, so they get the focused
+  // single view with no tab bar. Admin is read-only across every line type,
+  // so they get the full tabbed overview — Paint Out / Assembly In /
+  // Assembly Out included.
+  if (user?.role !== "ADMIN") {
+    return (
+      <div>
+        <h2 className="text-lg font-semibold text-slate-800">Line Management</h2>
+        <PaintInLines />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -265,8 +419,9 @@ export function LineManagementPage() {
       </div>
 
       {tab === "paint-in" && <PaintInLines />}
-      {tab === "paint-out" && <ComingSoon label="Paint Out Lines" />}
-      {tab === "assembly-in" && <ComingSoon label="Assembly In Lines" />}
+      {tab === "paint-out" && <PaintOutLinesView />}
+      {tab === "assembly-in" && <AssemblyInLinesView />}
+      {tab === "assembly-out" && <AssemblyOutLinesView />}
     </div>
   );
 }

@@ -9,13 +9,13 @@ $rows = $pdo->query(
     "SELECT fir.id AS furnishing_in_id, c.id AS coach_id, c.coach_number, ct.name AS coach_type,
             fir.furnishing_in_datetime, sot.outturn_datetime AS shell_outturn_datetime,
             u.full_name AS recorded_by,
-            fot.furnishing_out_datetime, fot.id AS furnishing_out_id
+            pit.paint_in_datetime, pit.id AS paint_in_id
      FROM furnishing_in_records fir
      JOIN coaches c ON c.id = fir.coach_id
      JOIN coach_types ct ON ct.id = c.coach_type_id
      JOIN shell_outturn_transactions sot ON sot.id = fir.shell_outturn_id
      JOIN users u ON u.id = fir.recorded_by_user_id
-     LEFT JOIN furnishing_out_transactions fot ON fot.coach_id = c.id
+     LEFT JOIN paint_in_transactions pit ON pit.coach_id = c.id
      ORDER BY fir.furnishing_in_datetime DESC"
 )->fetchAll();
 
@@ -28,8 +28,8 @@ $data = array_map(function ($row) {
         'furnishing_in_datetime' => $row['furnishing_in_datetime'],
         'shell_outturn_datetime' => $row['shell_outturn_datetime'],
         'recorded_by' => $row['recorded_by'],
-        'furnishing_out_datetime' => $row['furnishing_out_datetime'],
-        'status' => $row['furnishing_out_id'] !== null ? 'FURNISHING_OUT' : 'FURNISHING_IN',
+        'paint_in_datetime' => $row['paint_in_datetime'],
+        'status' => $row['paint_in_id'] !== null ? 'PAINT_IN' : 'FURNISHING_IN',
     ];
 }, $rows);
 

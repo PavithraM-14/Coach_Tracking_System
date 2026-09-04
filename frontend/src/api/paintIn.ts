@@ -1,8 +1,12 @@
 import { apiRequest } from "./client";
-import type { PaintInCreateResponse, PaintLine, WorklistCoach } from "../types";
+import type { PaintInCreateResponse, PaintInListRow, PaintLine, WorklistCoach } from "../types";
 
 export function getPaintLines(): Promise<{ data: PaintLine[]; booked_count: number }> {
   return apiRequest("/paint-in/lines.php");
+}
+
+export function getPaintInList(): Promise<{ data: PaintInListRow[] }> {
+  return apiRequest("/paint-in/list.php");
 }
 
 export function getPaintInWorklist(): Promise<{ data: WorklistCoach[] }> {

@@ -14,17 +14,17 @@ import { ApiError } from "../api/client";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { useAuth } from "../context/AuthContext";
 
-const SKILL_ROLE_CODES = ["FURNISHING", "PAINT", "ASSEMBLY_PRODUCTION"] as const;
+// No PAINT here: Paint moved to its own coach-type-level In/Out matrix (see
+// Admin > Paint Assignments) instead of this category-level skill checkbox
+// model — keeping both would let the two disagree about who's eligible.
+const SKILL_ROLE_CODES = ["FURNISHING", "ASSEMBLY_PRODUCTION"] as const;
 
 // Mirrors backend/lib/Operations.php — a skill is "can perform this operation
-// on this coach category", not just a role/category tag. Paint In and Paint
-// Out are both PAINT role but distinct operations, which is exactly why this
-// has to be its own dimension.
+// on this coach category", not just a role/category tag.
 const OPERATIONS: Array<{ code: OperationCode; label: string; live: boolean }> = [
-  { code: "FURNISHING_OUT", label: "Furnishing Out", live: true },
-  { code: "PAINT_IN", label: "Paint In", live: true },
-  { code: "PAINT_OUT", label: "Paint Out", live: false },
-  { code: "ASSEMBLY_OP", label: "Assembly Operation", live: false },
+  { code: "FURNISHING_IN", label: "Furnishing In", live: true },
+  { code: "ASSEMBLY_IN", label: "Assembly In", live: true },
+  { code: "ASSEMBLY_OUT", label: "Assembly Out", live: true },
 ];
 
 function operationLabel(code: OperationCode): string {

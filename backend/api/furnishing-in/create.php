@@ -11,20 +11,20 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $body = requestBody();
 $coachId = (int) ($body['coach_id'] ?? 0);
-$outDate = trim($body['furnishing_out_date'] ?? '');
-$outTime = trim($body['furnishing_out_time'] ?? '');
+$inDate = trim($body['furnishing_in_date'] ?? '');
+$inTime = trim($body['furnishing_in_time'] ?? '');
 $remarks = isset($body['remarks']) ? trim((string) $body['remarks']) : null;
 
 if ($coachId <= 0) {
     Response::error('coach_id is required.', 400);
 }
-if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $outDate)) {
-    Response::error('furnishing_out_date is required in YYYY-MM-DD format.', 400);
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $inDate)) {
+    Response::error('furnishing_in_date is required in YYYY-MM-DD format.', 400);
 }
-if (!preg_match('/^\d{2}:\d{2}$/', $outTime)) {
-    $outTime = '00:00';
+if (!preg_match('/^\d{2}:\d{2}$/', $inTime)) {
+    $inTime = '00:00';
 }
-$outDatetime = "$outDate $outTime:00";
+$inDatetime = "$inDate $inTime:00";
 
 $pdo = Db::get();
 
@@ -35,17 +35,17 @@ if (!$coach) {
     Response::error('Coach not found.', 404);
 }
 
-$stmt = $pdo->prepare('SELECT id FROM furnishing_in_records WHERE coach_id = :coach_id');
+$stmt = $pdo->prepare('SELECT id FROM shell_outturn_transactions WHERE coach_id = :coach_id');
 $stmt->execute(['coach_id' => $coachId]);
-$furnishingIn = $stmt->fetch();
-if (!$furnishingIn) {
-    Response::error('This coach has not entered Furnishing In yet.', 409);
+$shellOutturn = $stmt->fetch();
+if (!$shellOutturn) {
+    Response::error('This coach has not had Shell Outturn recorded yet.', 409);
 }
 
-$stmt = $pdo->prepare('SELECT id FROM furnishing_out_transactions WHERE coach_id = :coach_id');
+$stmt = $pdo->prepare('SELECT id FROM furnishing_in_records WHERE coach_id = :coach_id');
 $stmt->execute(['coach_id' => $coachId]);
 if ($stmt->fetch()) {
-    Response::error('Furnishing Out already recorded for this coach.', 409);
+    Response::error('Furnishing In already recorded for this coach.', 409);
 }
 
 $stmt = $pdo->prepare(
@@ -60,17 +60,16 @@ if (!$assignment || (int) $assignment['assigned_user_id'] !== (int) $currentUser
 $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare(
-        'INSERT INTO furnishing_out_transactions (coach_id, furnishing_in_id, furnishing_out_datetime, remarks, recorded_by_user_id)
-         VALUES (:coach_id, :furnishing_in_id, :furnishing_out_datetime, :remarks, :recorded_by_user_id)'
+        'INSERT INTO furnishing_in_records (coach_id, shell_outturn_id, furnishing_in_datetime, recorded_by_user_id)
+         VALUES (:coach_id, :shell_outturn_id, :furnishing_in_datetime, :recorded_by_user_id)'
     );
     $stmt->execute([
         'coach_id' => $coachId,
-        'furnishing_in_id' => $furnishingIn['id'],
-        'furnishing_out_datetime' => $outDatetime,
-        'remarks' => $remarks,
+        'shell_outturn_id' => $shellOutturn['id'],
+        'furnishing_in_datetime' => $inDatetime,
         'recorded_by_user_id' => $currentUser['sub'],
     ]);
-    $furnishingOutId = (int) $pdo->lastInsertId();
+    $furnishingInId = (int) $pdo->lastInsertId();
 
     // Frees up this employee's Furnishing capacity (auto-pulling their next
     // queued coach), and opens up Paint eligibility for this coach.
@@ -81,16 +80,16 @@ try {
 } catch (PDOException $e) {
     $pdo->rollBack();
     if ($e->errorInfo[1] === 1062) {
-        Response::error('Furnishing Out already recorded for this coach.', 409);
+        Response::error('Furnishing In already recorded for this coach.', 409);
     }
-    Response::error('Failed to record Furnishing Out: ' . $e->getMessage(), 500);
+    Response::error('Failed to record Furnishing In: ' . $e->getMessage(), 500);
 } catch (Throwable $e) {
     $pdo->rollBack();
-    Response::error('Failed to record Furnishing Out: ' . $e->getMessage(), 500);
+    Response::error('Failed to record Furnishing In: ' . $e->getMessage(), 500);
 }
 
 Response::ok([
-    'furnishing_out_id' => $furnishingOutId,
+    'furnishing_in_id' => $furnishingInId,
     'coach_number' => $coach['coach_number'],
-    'furnishing_out_datetime' => $outDatetime,
+    'furnishing_in_datetime' => $inDatetime,
 ], 201);

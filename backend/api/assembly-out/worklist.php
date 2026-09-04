@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-$currentUser = Auth::requireRole(['FURNISHING']);
+$currentUser = Auth::requireRole(['ASSEMBLY_PRODUCTION']);
 
 $pdo = Db::get();
 $stmt = $pdo->prepare(
@@ -17,7 +17,7 @@ $stmt = $pdo->prepare(
      JOIN coach_categories cc ON cc.id = ct.category_id
      JOIN plants p ON p.id = po.plant_id
      JOIN production_years py ON py.id = po.production_year_id
-     WHERE ca.module = 'FURNISHING' AND ca.status = 'ASSIGNED' AND ca.assigned_user_id = :user_id
+     WHERE ca.module = 'ASSEMBLY_OUT' AND ca.status = 'ASSIGNED' AND ca.assigned_user_id = :user_id
      ORDER BY c.coach_number"
 );
 $stmt->execute(['user_id' => $currentUser['sub']]);

@@ -7,7 +7,9 @@ import {
   Factory,
   ClipboardCheck,
   PackageCheck,
+  PaintBucket,
   Layers,
+  LayoutGrid,
   LogOut,
   Menu,
   User,
@@ -22,22 +24,35 @@ interface NavItem {
   label: string;
   icon: LucideIcon;
   roles: RoleCode[];
+  // Modules covering more than one stage per role (PAINT: Paint In/Paint
+  // Out; ASSEMBLY_PRODUCTION: Assembly In/Assembly Out; FURNISHING:
+  // Furnishing In) are per-employee, not per-role — a login only sees a
+  // stage's nav link if it's actually configured (matrix cell / skill) for
+  // it, on top of passing the role check. See AuthContext's `capabilities`.
+  module?: string;
 }
 
 // Strict allow-list: a role only ever sees the modules listed here.
-// ADMIN gets Line Management too, but read-only (enforced inside LineManagementPage).
+// Line Management (Admin's read-only, multi-tab overview) and Paint In
+// (the Paint employee's own data-entry page) are deliberately separate
+// modules/pages now, not one shared component branching on role.
 export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/production-orders", label: "Production Orders", icon: FileText, roles: ["ADMIN"] },
   { to: "/admin/users", label: "User Management", icon: Users, roles: ["ADMIN"] },
+  { to: "/admin/paint-assignments", label: "Paint Assignments", icon: LayoutGrid, roles: ["ADMIN"] },
+  { to: "/line-management", label: "Line Management", icon: Layers, roles: ["ADMIN"] },
   { to: "/shell-production", label: "Shell Production", icon: Factory, roles: ["SHELL_PRODUCTION"] },
   { to: "/shell-outturn", label: "Shell Outturn", icon: ClipboardCheck, roles: ["SHELL_PRODUCTION"] },
-  { to: "/furnishing-in", label: "Furnishing In / Out", icon: PackageCheck, roles: ["FURNISHING"] },
-  { to: "/line-management", label: "Line Management", icon: Layers, roles: ["PAINT", "ADMIN"] },
+  { to: "/furnishing-in", label: "Furnishing In", icon: PackageCheck, roles: ["FURNISHING"], module: "FURNISHING" },
+  { to: "/paint-in", label: "Paint In", icon: PaintBucket, roles: ["PAINT"], module: "PAINT" },
+  { to: "/paint-out", label: "Paint Out", icon: PaintBucket, roles: ["PAINT"], module: "PAINT_OUT" },
+  { to: "/assembly-in", label: "Assembly In", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_IN" },
+  { to: "/assembly-out", label: "Assembly Out", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_OUT" },
 ];
 
-export function visibleNavItems(role: RoleCode | undefined): NavItem[] {
+export function visibleNavItems(role: RoleCode | undefined, capabilities: string[] = []): NavItem[] {
   if (!role) return [];
-  return NAV_ITEMS.filter((item) => item.roles.includes(role));
+  return NAV_ITEMS.filter((item) => item.roles.includes(role) && (!item.module || capabilities.includes(item.module)));
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
@@ -46,8 +61,8 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
   }`;
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth();
-  const items = visibleNavItems(user?.role);
+  const { user, logout, capabilities } = useAuth();
+  const items = visibleNavItems(user?.role, capabilities);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (

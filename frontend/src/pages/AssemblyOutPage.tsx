@@ -1,0 +1,198 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { createAssemblyOut, getAssemblyOutWorklist, getAssemblyOutLines } from "../api/assemblyOut";
+import { getMyAssignmentSummary } from "../api/assignments";
+import type { AssignmentSummary, AssemblyOutLine, WorklistCoach } from "../types";
+import { ApiError } from "../api/client";
+import { FieldReadOnly } from "../components/ui/FieldReadOnly";
+import { ValidationMessage } from "../components/ui/ValidationMessage";
+import { DatePickerField, formatDateForDisplay } from "../components/ui/DatePickerField";
+
+export function AssemblyOutPage() {
+  const [lines, setLines] = useState<AssemblyOutLine[] | null>(null);
+  const [coaches, setCoaches] = useState<WorklistCoach[] | null>(null);
+  const [summary, setSummary] = useState<AssignmentSummary | null>(null);
+  const [selectedCoachId, setSelectedCoachId] = useState<number | "">("");
+  const [selectedSlotId, setSelectedSlotId] = useState<number | "">("");
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [remarks, setRemarks] = useState("");
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  function reload() {
+    getAssemblyOutLines().then((res) => setLines(res.data));
+    getAssemblyOutWorklist().then((res) => setCoaches(res.data));
+    getMyAssignmentSummary("ASSEMBLY_OUT").then(setSummary);
+  }
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  async function handleSubmit() {
+    setFieldError(null);
+    setApiError(null);
+    setSuccess(null);
+
+    if (!selectedCoachId) {
+      setFieldError("Select a coach.");
+      return;
+    }
+    if (!selectedSlotId) {
+      setFieldError("Select an available line/slot.");
+      return;
+    }
+    if (!date) {
+      setFieldError("Assembly Out date is required.");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const result = await createAssemblyOut({
+        coach_id: selectedCoachId,
+        slot_id: selectedSlotId,
+        assembly_out_date: formatDateForDisplay(date),
+        assembly_out_time: "00:00",
+        remarks: remarks || undefined,
+      });
+      setSuccess(
+        `Assembly Out recorded for coach ${result.coach_number} on ${result.assembly_out_line}, slot ${result.slot_number}.`,
+      );
+      setSelectedCoachId("");
+      setSelectedSlotId("");
+      setDate(undefined);
+      setRemarks("");
+      reload();
+    } catch (err) {
+      setApiError(err instanceof ApiError ? err.message : "Failed to record Assembly Out.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const selectedCoach = coaches?.find((c) => c.coach_id === selectedCoachId);
+
+  return (
+    <div>
+      <h2 className="text-lg font-semibold text-slate-800">Assembly Out</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Each Assembly Out line has a maximum capacity of 10 coaches. Coaches are auto-assigned to
+        you (up to 5 at a time) once Assembly In is recorded — pick a slot for one of your
+        assigned coaches below.
+      </p>
+
+      <Link
+        to="/assembly-out/history"
+        className="mt-3 inline-block rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+      >
+        Assembly Out Records →
+      </Link>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {summary && (
+          <span className="inline-block rounded-full bg-amber-100 px-3 py-1 text-xs font-medium text-amber-700">
+            Booked: {summary.assigned_count} / {summary.capacity ?? "∞"} assigned to you
+            {summary.queued_count > 0 && ` · ${summary.queued_count} queued`}
+          </span>
+        )}
+        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+          <span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Available
+        </span>
+        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
+          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Booked
+        </span>
+      </div>
+
+      {lines && (
+        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+          {lines.map((line) => (
+            <div key={line.assembly_out_line_id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+              <p className="text-sm font-semibold text-slate-800">{line.name}</p>
+              <p className="text-xs text-slate-500">
+                {line.occupied_slots} / {line.total_slots} occupied
+              </p>
+              <div className="mt-2 grid grid-cols-5 gap-1">
+                {line.slots.map((slot) => (
+                  <button
+                    key={slot.slot_id}
+                    type="button"
+                    disabled={slot.is_occupied}
+                    onClick={() => setSelectedSlotId(slot.slot_id)}
+                    title={slot.is_occupied ? `Occupied by ${slot.coach_number}` : `Slot ${slot.slot_number}`}
+                    className={`rounded py-1 text-xs font-medium ${
+                      slot.is_occupied
+                        ? "cursor-not-allowed bg-orange-100 text-orange-700"
+                        : selectedSlotId === slot.slot_id
+                          ? "bg-blue-600 text-white"
+                          : "bg-green-100 text-green-800 hover:bg-green-200"
+                    }`}
+                  >
+                    {slot.slot_number}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Coach (assigned to you)</p>
+        <select
+          value={selectedCoachId}
+          onChange={(e) => setSelectedCoachId(e.target.value ? Number(e.target.value) : "")}
+          className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        >
+          <option value="">Select a coach</option>
+          {coaches?.map((coach) => (
+            <option key={coach.coach_id} value={coach.coach_id}>
+              {coach.coach_number} — {coach.coach_type}
+            </option>
+          ))}
+        </select>
+        {coaches && coaches.length === 0 && (
+          <p className="mt-1 text-sm text-slate-500">No coaches currently assigned to you for Assembly Out.</p>
+        )}
+
+        {selectedCoach && (
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <FieldReadOnly label="Coach Type" value={selectedCoach.coach_type} />
+            <FieldReadOnly label="Plant" value={selectedCoach.plant} />
+            <FieldReadOnly label="Production Year" value={selectedCoach.production_year} />
+            <FieldReadOnly label="BO Number" value={`${selectedCoach.bo_number}-${selectedCoach.bo_item}`} />
+          </div>
+        )}
+
+        <div className="mt-4 max-w-xs">
+          <DatePickerField label="Assembly Out Date" value={date} onChange={setDate} />
+        </div>
+
+        <div className="mt-4">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Remarks (optional)</p>
+          <textarea
+            value={remarks}
+            onChange={(e) => setRemarks(e.target.value)}
+            rows={2}
+            className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          />
+        </div>
+
+        {fieldError && <ValidationMessage kind="error" message={fieldError} />}
+        {apiError && <ValidationMessage kind="error" message={apiError} />}
+        {success && <ValidationMessage kind="success" message={success} />}
+
+        <button
+          type="button"
+          onClick={handleSubmit}
+          disabled={submitting}
+          className="mt-4 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {submitting ? "Submitting..." : "Submit Assembly Out"}
+        </button>
+      </div>
+    </div>
+  );
+}
