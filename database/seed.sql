@@ -42,7 +42,7 @@ INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id)
 (3,  'E1003', 'R. Meena',       'shell1',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 3),
 (4,  'E1004', 'K. Priya',       'furnish1',    '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 4),
 (5,  'E1005', 'S. Ramesh',      'paint1',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
-(6,  'E1006', 'M. Kumar',       'assy1',       '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
+(6,  'E1006', 'M. Kumar',       'assemble1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
 (7,  'E1007', 'D. Suresh',      'mechinsp1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 7),
 (8,  'E1008', 'N. Bala',        'elecinsp1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 8),
 (9,  'E1009', 'P. Anbu',        'shunt1',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 9),
@@ -54,7 +54,10 @@ INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id)
 -- concurrent per employee) has more than one candidate to load-balance
 -- across. Furnishing is deliberately single-employee (furnish1 only) — that
 -- module has no cap, so a second Furnishing login would just sit idle.
-(15, 'E1015', 'V. Raja',        'paint2',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5);
+(15, 'E1015', 'V. Raja',        'paint2',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+-- Assembly, same split as Paint: separate logins per direction — assemble1
+-- only handles Assembly In, assemble2 only handles Assembly Out.
+(16, 'E1016', 'S. Karthikeyan', 'assemble2',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6);
 
 -- ===================== Plants =====================
 -- Matches the legacy BO reference's leading token (e.g. "FURN | 2025 | ...").
@@ -102,18 +105,18 @@ INSERT INTO skills (id, name, operation, role_code, coach_category_id) VALUES
 
 -- ===================== User skills =====================
 -- furnish1 covers both categories — every coach past Shell Outturn is
--- assigned to them, uncapped (see Assignment::MODULE_CAPACITY). assy1 covers
--- both Assembly In and Assembly Out for both categories (the only seeded
--- Assembly Production login) — capped at 5 concurrent like Paint, so
--- coaches queue once assy1 has 5 ASSIGNED for a given module.
+-- assigned to them, uncapped (see Assignment::MODULE_CAPACITY). Assembly is
+-- split like Paint: assemble1 = Assembly In only, assemble2 = Assembly Out
+-- only, each across both categories — capped at 5 concurrent like Paint, so
+-- coaches queue once one of them has 5 ASSIGNED.
 
 INSERT INTO user_skills (user_id, skill_id) VALUES
 (4, 1),  -- furnish1: LHB AC Furnishing
 (4, 2),  -- furnish1: LHB Non-AC Furnishing
-(6, 3),  -- assy1: LHB AC Assembly In
-(6, 4),  -- assy1: LHB Non-AC Assembly In
-(6, 5),  -- assy1: LHB AC Assembly Out
-(6, 6);  -- assy1: LHB Non-AC Assembly Out
+(6, 3),  -- assemble1: LHB AC Assembly In
+(6, 4),  -- assemble1: LHB Non-AC Assembly In
+(16, 5), -- assemble2: LHB AC Assembly Out
+(16, 6); -- assemble2: LHB Non-AC Assembly Out
 
 -- ===================== Coach types =====================
 -- Codes/names match the legacy tbl_coach_types active rows for these categories.

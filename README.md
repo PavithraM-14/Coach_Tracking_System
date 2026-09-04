@@ -37,7 +37,8 @@ React + PHP + MySQL, seeded from cleaned legacy reference data. See
 ## Demo accounts
 
 Every role from the functional doc has its own login (13 total), plus one
-extra Paint login (14 total). All share the password `Passw0rd!`.
+extra Paint login and one extra Assembly Production login (15 total) — one
+per pipeline direction, per role. All share the password `Passw0rd!`.
 
 | Username    | Role                          | Has working pages this phase? |
 |-------------|-------------------------------|--------------------------------|
@@ -47,7 +48,8 @@ extra Paint login (14 total). All share the password `Passw0rd!`.
 | furnish1    | FURNISHING                    | Yes — Furnishing In (skills: LHB AC + Non-AC) — the only Furnishing login; every coach past Shell Outturn is assigned to them, uncapped |
 | paint1      | PAINT                         | Yes — Paint In (`/paint-in`, full allocation; matrix: Paint In, all coach types) |
 | paint2      | PAINT                         | Yes — Paint Out (`/paint-out`, full allocation; matrix: Paint Out, all coach types) |
-| assy1       | ASSEMBLY_PRODUCTION           | Yes — Assembly In (`/assembly-in`) + Assembly Out (`/assembly-out`) (skills: LHB AC + Non-AC, both operations) |
+| assemble1   | ASSEMBLY_PRODUCTION           | Yes — Assembly In only (`/assembly-in`; skills: LHB AC + Non-AC Assembly In) |
+| assemble2   | ASSEMBLY_PRODUCTION           | Yes — Assembly Out only (`/assembly-out`; skills: LHB AC + Non-AC Assembly Out) |
 | mechinsp1   | MECHANICAL_INSPECTION         | Login only |
 | elecinsp1   | ELECTRICAL_INSPECTION         | Login only |
 | shunt1      | SHUNTING_STAFF                | Login only |
@@ -237,8 +239,9 @@ passes `PAINT` or `PAINT_OUT`, ASSEMBLY_PRODUCTION passes `ASSEMBLY_IN` or
 `ASSEMBLY_OUT`). Every stage's `create.php` rejects (403) if the coach isn't
 currently assigned to the caller. Verified live end-to-end: a single coach
 walked through Shell Outturn → Furnishing In → Paint In (paint1) → Paint Out
-(paint2) → Assembly In (assy1) → Assembly Out (assy1), with each submission
-correctly routing the coach to the next stage's assigned employee.
+(paint2) → Assembly In (assemble1) → Assembly Out (assemble2), with each
+submission correctly routing the coach to the next stage's assigned
+employee.
 
 ## Supervisor-Coach Assignments (In-Out) Matrix — Paint only
 
@@ -302,11 +305,9 @@ places consume it:
 Furnishing is unaffected in practice (furnish1 has both category skills
 seeded, so always capable) but goes through the same generic mechanism for
 consistency — there's no special-casing for "the uncapped module."
-Demo config note: **assy1** currently holds both `ASSEMBLY_IN` and
-`ASSEMBLY_OUT` skills (it's the only seeded Assembly Production login), so
-it correctly sees both nav items/dashboards — the split only becomes visible
-once a second, differently-configured Assembly employee exists, same as
-paint1/paint2 already demonstrate for Paint.
+Demo config: **assemble1 = Assembly In only**, **assemble2 = Assembly Out
+only** — the same one-login-per-direction split as paint1/paint2, verified
+live (assemble1's sidebar has no "Assembly Out" link, and vice versa).
 
 ## Profile (all roles)
 
