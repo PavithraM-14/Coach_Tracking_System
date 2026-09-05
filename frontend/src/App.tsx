@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { AppShell } from "./components/layout/AppShell";
+import { WelcomePage } from "./pages/WelcomePage";
 import { LoginPage } from "./pages/LoginPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { HomePage } from "./pages/HomePage";
@@ -38,6 +39,7 @@ function App() {
   return (
     <AuthProvider>
       <Routes>
+        <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route
