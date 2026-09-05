@@ -73,6 +73,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const items = visibleNavItems(user?.role, capabilities);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  function handleLogout() {
+    logout();
+    // A hard redirect (not useNavigate) so the auth-state update and the
+    // route change can't race — ProtectedRoute would otherwise sometimes
+    // win that race and send the now-logged-out user to /welcome instead.
+    window.location.href = "/login";
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       <aside
@@ -117,7 +125,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="border-t border-slate-100 px-3 py-3">
             <button
               type="button"
-              onClick={logout}
+              onClick={handleLogout}
               className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-red-600"
             >
               <LogOut size={18} />
