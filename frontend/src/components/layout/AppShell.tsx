@@ -119,7 +119,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {items.map((item) => {
               const Icon = item.icon;
               return (
-                <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                <NavLink key={item.to} to={item.to} end className={navLinkClass}>
                   <Icon size={18} />
                   {item.label}
                 </NavLink>
