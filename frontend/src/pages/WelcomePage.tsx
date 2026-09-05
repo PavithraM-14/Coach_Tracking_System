@@ -12,14 +12,6 @@ export function WelcomePage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="flex items-center gap-2 border-b border-slate-200 bg-white px-6 py-4">
-        <img src={railwaysLogo} alt="" className="h-8 w-8 flex-shrink-0" />
-        <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Indian Railways</p>
-          <span className="text-lg font-extrabold text-slate-900">CTS</span>
-        </div>
-      </header>
-
       <main className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
         <img src={railwaysLogo} alt="Indian Railways" className="h-24 w-24" />
 
