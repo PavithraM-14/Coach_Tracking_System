@@ -1,6 +1,20 @@
 import { Navigate, useNavigate } from "react-router-dom";
+import { Factory, PackageCheck, PaintBucket, Layers, Truck, type LucideIcon } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import railwaysLogo from "../assets/indian-railways-logo.svg";
+
+interface Stage {
+  icon: LucideIcon;
+  label: string;
+}
+
+const STAGES: Stage[] = [
+  { icon: Factory, label: "Shell Outturn" },
+  { icon: PackageCheck, label: "Furnishing" },
+  { icon: PaintBucket, label: "Paint" },
+  { icon: Layers, label: "Assembly" },
+  { icon: Truck, label: "Dispatch" },
+];
 
 export function WelcomePage() {
   const { isAuthenticated } = useAuth();
@@ -11,54 +25,48 @@ export function WelcomePage() {
   }
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-slate-950 via-blue-950 to-slate-900 px-4 py-16 text-center">
-      {/* Subtle railway-track pattern */}
-      <svg
-        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.07]"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <defs>
-          <pattern id="tracks" width="64" height="64" patternUnits="userSpaceOnUse">
-            <line x1="18" y1="0" x2="18" y2="64" stroke="white" strokeWidth="2" />
-            <line x1="46" y1="0" x2="46" y2="64" stroke="white" strokeWidth="2" />
-            <line x1="0" y1="10" x2="64" y2="10" stroke="white" strokeWidth="2" />
-            <line x1="0" y1="34" x2="64" y2="34" stroke="white" strokeWidth="2" />
-            <line x1="0" y1="58" x2="64" y2="58" stroke="white" strokeWidth="2" />
-          </pattern>
-        </defs>
-        <rect width="100%" height="100%" fill="url(#tracks)" />
-      </svg>
+    <div className="flex min-h-screen flex-col bg-slate-50">
+      <header className="flex items-center gap-2 border-b border-slate-200 bg-white px-6 py-4">
+        <img src={railwaysLogo} alt="" className="h-8 w-8 flex-shrink-0" />
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-400">Indian Railways</p>
+          <span className="text-lg font-extrabold text-slate-900">CTS</span>
+        </div>
+      </header>
 
-      {/* Soft glow behind the emblem */}
-      <div className="pointer-events-none absolute top-24 h-72 w-72 rounded-full bg-blue-500/20 blur-3xl" />
+      <main className="flex flex-1 flex-col items-center justify-center px-4 py-16 text-center">
+        <img src={railwaysLogo} alt="Indian Railways" className="h-20 w-20" />
 
-      <div className="relative flex flex-col items-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-blue-300/80">
-          Government of India &middot; Ministry of Railways
-        </p>
+        <h1 className="mt-6 text-3xl font-bold text-slate-900 sm:text-4xl">Integral Coach Factory</h1>
+        <p className="mt-1 text-sm text-slate-500">Chennai</p>
 
-        <img src={railwaysLogo} alt="Indian Railways" className="mt-6 h-24 w-24 drop-shadow-lg sm:h-28 sm:w-28" />
-
-        <h1 className="mt-8 text-4xl font-extrabold tracking-tight text-white sm:text-5xl md:text-6xl">
-          Integral Coach <span className="text-blue-400">Factory</span>
-        </h1>
-        <p className="mt-2 text-sm font-medium uppercase tracking-[0.3em] text-slate-400">Chennai</p>
-
-        <p className="mt-6 text-sm font-medium uppercase tracking-[0.2em] text-blue-200/90 sm:text-base">
-          Coach Tracking System
-        </p>
-        <p className="mt-3 max-w-md text-sm text-slate-400">
+        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-blue-600">Coach Tracking System</p>
+        <p className="mt-3 max-w-md text-sm text-slate-500">
           End-to-end visibility of every coach, from shell outturn to final dispatch.
         </p>
 
         <button
           type="button"
           onClick={() => navigate("/login")}
-          className="mt-10 rounded-full bg-blue-600 px-10 py-3 text-sm font-semibold text-white shadow-lg shadow-blue-900/40 transition hover:bg-blue-500"
+          className="mt-8 rounded-lg bg-blue-600 px-8 py-2.5 text-sm font-semibold text-white hover:bg-blue-700"
         >
           Login
         </button>
-      </div>
+
+        <div className="mt-14 flex w-full max-w-3xl flex-wrap items-stretch justify-center gap-3">
+          {STAGES.map(({ icon: Icon, label }, i) => (
+            <div key={label} className="flex items-center gap-3">
+              <div className="flex w-24 flex-col items-center gap-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                  <Icon size={16} />
+                </div>
+                <p className="text-[11px] font-medium text-slate-600">{label}</p>
+              </div>
+              {i < STAGES.length - 1 && <span className="hidden text-slate-300 sm:inline">→</span>}
+            </div>
+          ))}
+        </div>
+      </main>
     </div>
   );
 }

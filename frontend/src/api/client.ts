@@ -1,6 +1,7 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000/api";
 
 const TOKEN_KEY = "cts_token";
+const USER_KEY = "cts_user";
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -12,6 +13,7 @@ export function setToken(token: string): void {
 
 export function clearToken(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 export class ApiError extends Error {
