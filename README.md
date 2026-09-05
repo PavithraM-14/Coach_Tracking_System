@@ -39,8 +39,13 @@ React + PHP + MySQL, seeded from cleaned legacy reference data. See
 
 Every role from the functional doc has its own login (13 total), plus one
 extra Paint login, one extra Assembly Production login, and three extra
-Outturn/Dispatch logins (18 total) — one per pipeline direction/stage, per
-role. All share the password `Passw0rd!`.
+Outturn/Dispatch logins (18 total, listed in the table below) — one per
+pipeline direction/stage, per role — **plus** 11 real Paint Shop and 49
+real Assembly Shop supervisor logins imported from the factory's employee
+directory (78 total users; see "Real Paint and Assembly Shop supervisor
+rosters" below — not listed individually in the table, since they're a
+bulk-imported roster rather than hand-picked demo personas). All share the
+password `Passw0rd!`.
 
 | Username    | Role                          | Has working pages this phase? |
 |-------------|-------------------------------|--------------------------------|
@@ -336,23 +341,32 @@ A Paint/Assembly employee (`/paint-in`, `/paint-out`, `/assembly-in`,
 line/slot grid, nothing else. Admin sees the full 4-tab Line Management
 overview instead (see "Layout" above).
 
-## Real Assembly Shop supervisor roster
+## Real Paint and Assembly Shop supervisor rosters
 
-The Assembly matrix's employee pool includes 49 real Assembly Shop
-supervisors (Sr.Sec.Engr grade), sourced from the factory's `cug` employee
-directory dump: rows with `payunit = '30A'` (office "Assembly/Fur.") and
-`scalecd = '274'` identify this exact grade/section (the same pattern
-identifies Paint Shop's supervisors via `payunit = '54A'`). Each became a
-regular `ASSEMBLY_PRODUCTION` login — real `empno` as `employee_no`, real
-name as `full_name`, a username generated from the name (lowercased,
-punctuation stripped, deduplicated on collision, e.g. "AMUDA GANESAN.S" ->
-`amudag`) — password `Passw0rd!` like every other demo account. They're
-seeded with **no matrix cells configured**, appearing as empty columns
-Admin can assign coach types to via the UI, same as a real rollout would
-work. `seed.sql` mirrors this so a fresh import matches the live dev
-database; the (idempotent, `INSERT ... WHERE NOT EXISTS`) migration script
-used to generate them lived in the session scratchpad, not the repo, since
-it's a one-time data-import tool rather than app code.
+Both matrices' employee pools include real supervisors (Sr.Sec.Engr grade),
+sourced from the factory's `cug` employee directory dump — each shop
+identified by a `payunit` + `scalecd = '274'` filter:
+
+- **Paint Shop**: `payunit = '54A'` (office "Paint-Fur") → 11 real
+  supervisors, seeded as `PAINT` role logins alongside paint1/paint2.
+- **Assembly Shop**: `payunit = '30A'` (office "Assembly/Fur.") → 49 real
+  supervisors, seeded as `ASSEMBLY_PRODUCTION` role logins alongside
+  assemble1/assemble2.
+
+Each became a regular login for its shop's role — real `empno` as
+`employee_no`, real name as `full_name`, a username generated from the name
+(lowercased, punctuation stripped, deduplicated on collision across *both*
+rosters, e.g. "AMUDA GANESAN.S" -> `amudag`) — password `Passw0rd!` like
+every other demo account. They're seeded with **no matrix cells
+configured**, appearing as empty columns in their respective matrix
+(`/admin/paint-assignments` or `/admin/assembly-assignments`) for Admin to
+assign coach types to, same as a real rollout would work. `seed.sql`
+mirrors both rosters so a fresh import matches the live dev database
+(verified by a full schema+seed import into a throwaway database — 78
+total users, 13 PAINT-role, 52 ASSEMBLY_PRODUCTION-role). The (idempotent,
+`INSERT ... WHERE NOT EXISTS`) migration scripts used to generate them
+lived in the session scratchpad, not the repo, since they're one-time
+data-import tools rather than app code.
 
 ## Per-employee stage access (Paint In vs. Paint Out, Assembly In vs. Assembly Out)
 

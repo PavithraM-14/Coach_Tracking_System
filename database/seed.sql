@@ -123,6 +123,24 @@ INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id)
 (67, '802118', 'Bilal Mohamed M', 'bilalm', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
 (68, '858787', 'Yogha Sinivasa P', 'yoghas', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6);
 
+-- Real Paint Shop supervisors (Sr.Sec.Engr grade), same cug directory
+-- source as the Assembly roster above: payunit '54A' (Paint-Fur) with
+-- scalecd '274' identifies this exact grade/section. Populates the Paint
+-- Assignments matrix with a realistic supervisor roster alongside
+-- paint1/paint2 — none pre-configured with matrix cells.
+INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id) VALUES
+(69, '827518', 'Makesh Babu N S', 'makeshb', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(70, '825651', 'Periyannan R', 'periyannanr', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(71, '697371', 'Kumar R', 'kumarr', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(72, '833643', 'Sivasankarareddy Pynam', 'sivasankarareddyp', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(73, '832341', 'Suresh R', 'sureshr', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(74, '831883', 'Chandrasekaran S', 'chandrasekarans', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(75, '830311', 'Samadurai P', 'samaduraip', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(76, '855025', 'Sundar K', 'sundark', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(77, '880941', 'Guru Prasad A', 'gurup', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(78, '885321', 'Sarun Thambi K', 'sarunt', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
+(79, '885355', 'Vishnuprasad C G', 'vishnuprasadc', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5);
+
 -- ===================== Plants =====================
 -- Matches the legacy BO reference's leading token (e.g. "FURN | 2025 | ...").
 
