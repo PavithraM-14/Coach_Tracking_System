@@ -7,7 +7,6 @@ import { ApiError } from "../api/client";
 import { FieldReadOnly } from "../components/ui/FieldReadOnly";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { DatePickerField, formatDateForDisplay } from "../components/ui/DatePickerField";
-import { PendingCoachesTable } from "../components/ui/PendingCoachesTable";
 
 export function AssemblyInPage() {
   const [lines, setLines] = useState<AssemblyInLine[] | null>(null);
@@ -139,8 +138,6 @@ export function AssemblyInPage() {
           ))}
         </div>
       )}
-
-      <PendingCoachesTable coaches={coaches} emptyMessage="No coaches currently assigned to you for Assembly In." />
 
       <div className="mt-6 max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Coach (assigned to you)</p>

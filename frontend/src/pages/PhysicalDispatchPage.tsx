@@ -6,7 +6,6 @@ import { ApiError } from "../api/client";
 import { FieldReadOnly } from "../components/ui/FieldReadOnly";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { DatePickerField, formatDateForDisplay } from "../components/ui/DatePickerField";
-import { PendingCoachesTable } from "../components/ui/PendingCoachesTable";
 
 function toLocalDate(datetime: string): Date {
   return new Date(datetime.includes("T") ? datetime : datetime.replace(" ", "T"));
@@ -102,8 +101,6 @@ export function PhysicalDispatchPage() {
       )}
 
       {loadError && <p className="mt-4 text-sm text-red-600">{loadError}</p>}
-
-      <PendingCoachesTable coaches={coaches} emptyMessage="No coaches currently assigned to you for Physical Dispatch." />
 
       <div className="mt-4">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Coach (assigned to you)</p>

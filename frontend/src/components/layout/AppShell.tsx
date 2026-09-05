@@ -16,6 +16,7 @@ import {
   Lock,
   Landmark,
   Truck,
+  Clock,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -47,14 +48,23 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/line-management", label: "Line Management", icon: Layers, roles: ["ADMIN"] },
   { to: "/shell-production", label: "Shell Production", icon: Factory, roles: ["SHELL_PRODUCTION"] },
   { to: "/shell-outturn", label: "Shell Outturn", icon: ClipboardCheck, roles: ["SHELL_PRODUCTION"] },
+  { to: "/furnishing-in/pending", label: "Furnishing Pending", icon: Clock, roles: ["FURNISHING"], module: "FURNISHING" },
   { to: "/furnishing-in", label: "Furnishing In", icon: PackageCheck, roles: ["FURNISHING"], module: "FURNISHING" },
+  { to: "/paint-in/pending", label: "Paint In Pending", icon: Clock, roles: ["PAINT"], module: "PAINT" },
   { to: "/paint-in", label: "Paint In", icon: PaintBucket, roles: ["PAINT"], module: "PAINT" },
+  { to: "/paint-out/pending", label: "Paint Out Pending", icon: Clock, roles: ["PAINT"], module: "PAINT_OUT" },
   { to: "/paint-out", label: "Paint Out", icon: PaintBucket, roles: ["PAINT"], module: "PAINT_OUT" },
+  { to: "/assembly-in/pending", label: "Assembly In Pending", icon: Clock, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_IN" },
   { to: "/assembly-in", label: "Assembly In", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_IN" },
+  { to: "/assembly-out/pending", label: "Assembly Out Pending", icon: Clock, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_OUT" },
   { to: "/assembly-out", label: "Assembly Out", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_OUT" },
+  { to: "/local-outturn/pending", label: "Local Outturn Pending", icon: Clock, roles: ["OUTTURN_DISPATCH"], module: "LOCAL_OUTTURN" },
   { to: "/local-outturn", label: "Local Outturn", icon: ClipboardCheck, roles: ["OUTTURN_DISPATCH"], module: "LOCAL_OUTTURN" },
+  { to: "/lock-seal/pending", label: "Lock & Seal Pending", icon: Clock, roles: ["OUTTURN_DISPATCH"], module: "LOCK_SEAL" },
   { to: "/lock-seal", label: "Lock & Seal", icon: Lock, roles: ["OUTTURN_DISPATCH"], module: "LOCK_SEAL" },
+  { to: "/board-outturn/pending", label: "Board Outturn Pending", icon: Clock, roles: ["OUTTURN_DISPATCH"], module: "BOARD_OUTTURN" },
   { to: "/board-outturn", label: "Railway Board Outturn", icon: Landmark, roles: ["OUTTURN_DISPATCH"], module: "BOARD_OUTTURN" },
+  { to: "/physical-dispatch/pending", label: "Physical Dispatch Pending", icon: Clock, roles: ["OUTTURN_DISPATCH"], module: "PHYSICAL_DISPATCH" },
   { to: "/physical-dispatch", label: "Physical Dispatch", icon: Truck, roles: ["OUTTURN_DISPATCH"], module: "PHYSICAL_DISPATCH" },
 ];
 

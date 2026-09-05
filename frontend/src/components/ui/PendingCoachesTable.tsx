@@ -5,21 +5,16 @@ interface PendingCoachesTableProps {
   emptyMessage?: string;
 }
 
-// Shared "Pending Coaches" module — the same full-detail table Shell
-// Production already shows, embedded directly on each stage's entry page
-// (Furnishing, Paint In/Out, Assembly In/Out, and the four dispatch stages)
-// next to the single-coach picker, so an employee can browse everything
-// assigned/queued to them instead of scanning one dropdown at a time.
+// Full-detail pending-coach table, shared by every stage's dedicated
+// "Pending" sidebar page (mirrors Shell Production's table).
 export function PendingCoachesTable({ coaches, emptyMessage = "No coaches currently pending." }: PendingCoachesTableProps) {
   return (
-    <div className="mt-5">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Pending Coaches</p>
-
-      {coaches === null && <p className="mt-2 text-sm text-slate-500">Loading...</p>}
-      {coaches && coaches.length === 0 && <p className="mt-2 text-sm text-slate-500">{emptyMessage}</p>}
+    <>
+      {coaches === null && <p className="mt-4 text-sm text-slate-500">Loading...</p>}
+      {coaches && coaches.length === 0 && <p className="mt-4 text-sm text-slate-500">{emptyMessage}</p>}
 
       {coaches && coaches.length > 0 && (
-        <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
           <table className="w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
@@ -46,6 +41,6 @@ export function PendingCoachesTable({ coaches, emptyMessage = "No coaches curren
           </table>
         </div>
       )}
-    </div>
+    </>
   );
 }
