@@ -82,34 +82,44 @@ export function AssemblyInPage() {
     }
   }
 
-  async function handleSlotClick(lineId: number, slot: AssemblyInLine["slots"][number]) {
-    if (movingCoach) {
-      if (slot.is_occupied) return; // can only drop into an empty slot
-      setMoveError(null);
-      setMoving(true);
-      try {
-        await moveAssemblyCoach({ coach_id: movingCoach.coachId, to_slot_id: slot.slot_id });
-        setMovingCoach(null);
-        reload();
-      } catch (err) {
-        setMoveError(err instanceof ApiError ? err.message : "Failed to move coach.");
-      } finally {
-        setMoving(false);
-      }
-      return;
-    }
-
-    if (slot.is_occupied) {
-      if (slot.coach_id !== null && slot.coach_number !== null) {
-        setMoveError(null);
-        setMovingCoach({ coachId: slot.coach_id, coachNumber: slot.coach_number });
-      }
-      return;
-    }
-
-    setSelectedLineId(lineId);
-    setSelectedSlotId(slot.slot_id);
+  function beginMove(slot: { coach_id: number | null; coach_number: string | null }) {
+    if (slot.coach_id === null || slot.coach_number === null) return;
+    setMoveError(null);
+    setSelectedLineId("");
+    setSelectedSlotId("");
+    setMovingCoach({ coachId: slot.coach_id, coachNumber: slot.coach_number });
   }
+
+  async function completeMove(toSlotId: number) {
+    if (!movingCoach) return;
+    setMoveError(null);
+    setMoving(true);
+    try {
+      await moveAssemblyCoach({ coach_id: movingCoach.coachId, to_slot_id: toSlotId });
+      setMovingCoach(null);
+      setSelectedLineId("");
+      setSelectedSlotId("");
+      reload();
+    } catch (err) {
+      setMoveError(err instanceof ApiError ? err.message : "Failed to move coach.");
+    } finally {
+      setMoving(false);
+    }
+  }
+
+  function handleSlotSelect(value: number | "") {
+    if (movingCoach) {
+      if (value) completeMove(value);
+      return;
+    }
+    setSelectedSlotId(value);
+  }
+
+  const occupiedSlots = (lines ?? []).flatMap((line) =>
+    line.slots
+      .filter((s) => s.is_occupied)
+      .map((s) => ({ line, slot: s })),
+  );
 
   const selectedCoach = coaches?.find((c) => c.coach_id === selectedCoachId);
   const availableSlotsInSelectedLine =
@@ -120,9 +130,9 @@ export function AssemblyInPage() {
       <h2 className="text-lg font-semibold text-slate-800">Assembly In</h2>
       <p className="mt-1 text-sm text-slate-500">
         Each Assembly In line has a maximum capacity of 10 coaches. Coaches are auto-assigned to
-        you (up to 5 at a time) once Paint Out is recorded — use the Line/Slot dropdowns below, or
-        tap a slot in the grid. Need to free up a slot? Tap the coach occupying it, then tap an
-        empty slot to move it there.
+        you (up to 5 at a time) once Paint Out is recorded — use the Line/Slot dropdowns below to
+        pick a spot. Need to free up a slot? Tap "Move" next to the occupied coach, then pick a
+        destination line/slot above.
       </p>
 
       <Link
@@ -139,19 +149,13 @@ export function AssemblyInPage() {
             {summary.queued_count > 0 && ` · ${summary.queued_count} queued`}
           </span>
         )}
-        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-          <span className="h-2.5 w-2.5 rounded-full bg-green-500" /> Available
-        </span>
-        <span className="inline-flex items-center gap-1 text-xs text-slate-500">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Booked
-        </span>
       </div>
 
       {movingCoach && (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
           <span>
-            Moving coach <span className="font-semibold">{movingCoach.coachNumber}</span> — tap an empty slot to
-            place it{moving && "…"}
+            Moving coach <span className="font-semibold">{movingCoach.coachNumber}</span> — pick a destination
+            line/slot below{moving && "…"}
           </span>
           <button
             type="button"
@@ -164,10 +168,6 @@ export function AssemblyInPage() {
       )}
       {moveError && <ValidationMessage kind="error" message={moveError} />}
 
-      {/* Dropdown line/slot picker — the tiny grid buttons below are hard to
-          tap accurately on a phone, so this is the primary way to pick a
-          slot for a new Assembly In; the grid still works too and stays in
-          sync (same selectedLineId/selectedSlotId state). */}
       <div className="mt-4 grid max-w-xl grid-cols-2 gap-3">
         <div>
           <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Assembly Line</label>
@@ -194,7 +194,7 @@ export function AssemblyInPage() {
           <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Slot</label>
           <select
             value={selectedSlotId}
-            onChange={(e) => setSelectedSlotId(e.target.value ? Number(e.target.value) : "")}
+            onChange={(e) => handleSlotSelect(e.target.value ? Number(e.target.value) : "")}
             disabled={!selectedLineId}
             className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
@@ -208,56 +208,39 @@ export function AssemblyInPage() {
         </div>
       </div>
 
-      {lines && (
-        <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
-          {lines.map((line) => (
-            <div key={line.assembly_in_line_id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-              <p className="text-sm font-semibold text-slate-800">{line.name}</p>
-              <p className="text-xs text-slate-500">
-                {line.occupied_slots} / {line.total_slots} occupied
-              </p>
-              <div className="mt-2 grid grid-cols-5 gap-1">
-                {line.slots.map((slot) => (
-                  <button
-                    key={slot.slot_id}
-                    type="button"
-                    disabled={moving}
-                    onClick={() => handleSlotClick(line.assembly_in_line_id, slot)}
-                    title={
-                      slot.is_occupied
-                        ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""} (tap to move)`
-                        : movingCoach
-                          ? `Drop ${movingCoach.coachNumber} in slot ${slot.slot_number}`
-                          : `Slot ${slot.slot_number}`
-                    }
-                    className={`rounded py-1 text-xs font-medium ${
-                      slot.is_occupied
-                        ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
-                        : selectedSlotId === slot.slot_id
-                          ? "bg-blue-600 text-white"
-                          : movingCoach
-                            ? "bg-green-100 text-green-800 ring-2 ring-blue-400 hover:bg-green-200"
-                            : "bg-green-100 text-green-800 hover:bg-green-200"
-                    }`}
-                  >
-                    {slot.slot_number}
-                  </button>
-                ))}
-              </div>
-              {line.slots.some((s) => s.is_occupied) && (
-                <div className="mt-2 space-y-0.5 border-t border-slate-100 pt-2">
-                  {line.slots
-                    .filter((s) => s.is_occupied)
-                    .map((s) => (
-                      <p key={s.slot_id} className="text-[11px] text-slate-500">
-                        Slot {s.slot_number}: <span className="font-medium text-slate-700">{s.coach_number}</span>
-                        {s.recorded_by && <> · by {s.recorded_by}</>}
-                      </p>
-                    ))}
-                </div>
-              )}
-            </div>
-          ))}
+      {occupiedSlots.length > 0 && (
+        <div className="mt-4 max-w-xl overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Line</th>
+                <th className="px-3 py-2">Slot</th>
+                <th className="px-3 py-2">Coach</th>
+                <th className="px-3 py-2">By</th>
+                <th className="px-3 py-2" />
+              </tr>
+            </thead>
+            <tbody>
+              {occupiedSlots.map(({ line, slot }) => (
+                <tr key={slot.slot_id} className="border-b border-slate-50 last:border-0">
+                  <td className="px-3 py-2 text-slate-700">{line.name}</td>
+                  <td className="px-3 py-2 text-slate-700">{slot.slot_number}</td>
+                  <td className="px-3 py-2 font-medium text-slate-800">{slot.coach_number}</td>
+                  <td className="px-3 py-2 text-slate-500">{slot.recorded_by ?? "—"}</td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      type="button"
+                      disabled={moving || (movingCoach?.coachId === slot.coach_id)}
+                      onClick={() => beginMove(slot)}
+                      className="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Move
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

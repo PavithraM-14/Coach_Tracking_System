@@ -23,10 +23,12 @@ import { useAuth } from "../context/AuthContext";
 import { visibleNavItems } from "../components/layout/AppShell";
 import { getShellOutturnList, getShellOutturnWorklist } from "../api/shellOutturn";
 import { getFurnishingInList, getFurnishingInWorklist } from "../api/furnishingIn";
-import { getPaintInList, getPaintInWorklist, getPaintLines } from "../api/paintIn";
-import { getPaintOutList, getPaintOutWorklist } from "../api/paintOut";
-import { getAssemblyInList, getAssemblyInWorklist, getAssemblyInLines } from "../api/assemblyIn";
-import { getAssemblyOutList, getAssemblyOutWorklist } from "../api/assemblyOut";
+import { getPaintInWorklist } from "../api/paintIn";
+import { getPaintOutWorklist } from "../api/paintOut";
+import { getPaintRecords } from "../api/paintRecords";
+import { getAssemblyInWorklist } from "../api/assemblyIn";
+import { getAssemblyOutWorklist } from "../api/assemblyOut";
+import { getAssemblyRecords } from "../api/assemblyRecords";
 import { getLocalOutturnList, getLocalOutturnWorklist } from "../api/localOutturn";
 import { getLockSealList, getLockSealWorklist } from "../api/lockSeal";
 import { getBoardOutturnList, getBoardOutturnWorklist } from "../api/boardOutturn";
@@ -343,57 +345,79 @@ function FurnishingStats() {
 // shows stat cards for stages this specific employee can actually reach,
 // same reasoning as the nav/route capability gate.
 function PaintInStats() {
-  const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [available, setAvailable] = useState<number | null>(null);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
-  const [paintedToday, setPaintedToday] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
+  const [stillAtPaintIn, setStillAtPaintIn] = useState<number | null>(null);
+  const [movedToPaintOut, setMovedToPaintOut] = useState<number | null>(null);
 
   useEffect(() => {
-    getPaintInWorklist().then((res) => setAwaiting(res.data.length));
-    getPaintLines().then((res) => {
-      const occ = res.data.reduce((sum, l) => sum + l.occupied_slots, 0);
-      const total = res.data.reduce((sum, l) => sum + l.total_slots, 0);
-      setAvailable(total - occ);
-    });
-    getPaintInList().then((res) => {
+    getPaintInWorklist().then((res) => setPending(res.data.length));
+    getPaintRecords().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
-      setTotalRecords(res.data.length);
-      setPaintedToday(res.data.filter((r) => r.paint_in_datetime.slice(0, 10) === todayStr).length);
+      setTotalCompleted(res.data.length);
+      setCompletedToday(res.data.filter((r) => r.paint_in_datetime.slice(0, 10) === todayStr).length);
+      setStillAtPaintIn(res.data.filter((r) => r.paint_out_datetime === null).length);
+      setMovedToPaintOut(res.data.filter((r) => r.paint_out_datetime !== null).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Paint In" value={awaiting ?? "…"} description="Furnishing In done, pending allocation" to="/paint-in" />
-      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/paint-in" />
-      <StatCard icon={ClipboardList} color="indigo" label="Painted Today" value={paintedToday ?? "…"} description="Paint In recorded today" to="/paint-in/history?today=1" />
-      <StatCard icon={PaintBucket} color="blue" label="Total Paint In Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/paint-in/history" />
+      <StatCard icon={Clock} color="amber" label="Pending Paint In" value={pending ?? "…"} description="Furnishing In done, pending allocation" to="/paint-in" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Paint In recorded today" to="/paint-in/history?today=1" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Paint In completions" to="/paint-in/history" />
+      <StatCard
+        icon={PaintBucket}
+        color="blue"
+        label="Total Paint In Records"
+        value={pending === null || totalCompleted === null ? "…" : pending + totalCompleted}
+        description={
+          pending === null || stillAtPaintIn === null || movedToPaintOut === null
+            ? "Every coach that has reached Paint In, by status"
+            : `${pending} pending · ${stillAtPaintIn} at Paint In · ${movedToPaintOut} moved to Paint Out`
+        }
+      />
     </StatGrid>
   );
 }
 
 function PaintOutStats() {
-  const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [thisWeek, setThisWeek] = useState<number | null>(null);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
-  const [paintedToday, setPaintedToday] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
+  const [stillAtPaintOut, setStillAtPaintOut] = useState<number | null>(null);
+  const [movedToAssemblyIn, setMovedToAssemblyIn] = useState<number | null>(null);
 
   useEffect(() => {
-    getPaintOutWorklist().then((res) => setAwaiting(res.data.length));
-    getPaintOutList().then((res) => {
+    getPaintOutWorklist().then((res) => setPending(res.data.length));
+    Promise.all([getPaintRecords(), getAssemblyRecords()]).then(([paintRes, assemblyRes]) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
-      setTotalRecords(res.data.length);
-      setPaintedToday(res.data.filter((r) => r.paint_out_datetime.slice(0, 10) === todayStr).length);
-      setThisWeek(res.data.filter((r) => withinLastWeek(r.paint_out_datetime)).length);
+      const completed = paintRes.data.filter((r) => r.paint_out_datetime !== null);
+      const assemblyCoachIds = new Set(assemblyRes.data.map((r) => r.coach_id));
+      setTotalCompleted(completed.length);
+      setCompletedToday(completed.filter((r) => r.paint_out_datetime!.slice(0, 10) === todayStr).length);
+      setStillAtPaintOut(completed.filter((r) => !assemblyCoachIds.has(r.coach_id)).length);
+      setMovedToAssemblyIn(completed.filter((r) => assemblyCoachIds.has(r.coach_id)).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Paint Out" value={awaiting ?? "…"} description="Paint In done, pending allocation" to="/paint-out" />
-      <StatCard icon={CheckCircle2} color="green" label="Painted Out Today" value={paintedToday ?? "…"} description="Paint Out recorded today" to="/paint-out/history?today=1" />
-      <StatCard icon={ClipboardList} color="indigo" label="This Week" value={thisWeek ?? "…"} description="Paint Out recorded, last 7 days" to="/paint-out/history" />
-      <StatCard icon={PaintBucket} color="blue" label="Total Paint Out Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/paint-out/history" />
+      <StatCard icon={Clock} color="amber" label="Pending Paint Out" value={pending ?? "…"} description="Paint In done, pending allocation" to="/paint-out" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Paint Out recorded today" to="/paint-out/history?today=1" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Paint Out completions" to="/paint-out/history" />
+      <StatCard
+        icon={PaintBucket}
+        color="blue"
+        label="Total Paint Out Records"
+        value={pending === null || totalCompleted === null ? "…" : pending + totalCompleted}
+        description={
+          pending === null || stillAtPaintOut === null || movedToAssemblyIn === null
+            ? "Every coach that has reached Paint Out, by status"
+            : `${pending} pending · ${stillAtPaintOut} at Paint Out · ${movedToAssemblyIn} moved to Assembly In`
+        }
+      />
     </StatGrid>
   );
 }
@@ -410,57 +434,74 @@ function PaintStats({ capabilities }: { capabilities: string[] }) {
 // Same reasoning as PaintStats above — an ASSEMBLY_PRODUCTION login might be
 // configured for Assembly In only, Assembly Out only, or both.
 function AssemblyInStats() {
-  const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [available, setAvailable] = useState<number | null>(null);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
-  const [doneToday, setDoneToday] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
+  const [stillAtAssemblyIn, setStillAtAssemblyIn] = useState<number | null>(null);
+  const [movedToAssemblyOut, setMovedToAssemblyOut] = useState<number | null>(null);
 
   useEffect(() => {
-    getAssemblyInWorklist().then((res) => setAwaiting(res.data.length));
-    getAssemblyInLines().then((res) => {
-      const occ = res.data.reduce((sum, l) => sum + l.occupied_slots, 0);
-      const total = res.data.reduce((sum, l) => sum + l.total_slots, 0);
-      setAvailable(total - occ);
-    });
-    getAssemblyInList().then((res) => {
+    getAssemblyInWorklist().then((res) => setPending(res.data.length));
+    getAssemblyRecords().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
-      setTotalRecords(res.data.length);
-      setDoneToday(res.data.filter((r) => r.assembly_in_datetime.slice(0, 10) === todayStr).length);
+      setTotalCompleted(res.data.length);
+      setCompletedToday(res.data.filter((r) => r.assembly_in_datetime.slice(0, 10) === todayStr).length);
+      setStillAtAssemblyIn(res.data.filter((r) => r.assembly_out_datetime === null).length);
+      setMovedToAssemblyOut(res.data.filter((r) => r.assembly_out_datetime !== null).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Assembly In" value={awaiting ?? "…"} description="Paint Out done, pending allocation" to="/assembly-in" />
-      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/assembly-in" />
-      <StatCard icon={ClipboardList} color="indigo" label="Assembled In Today" value={doneToday ?? "…"} description="Assembly In recorded today" to="/assembly-in/history?today=1" />
-      <StatCard icon={Layers} color="purple" label="Total Assembly In Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/assembly-in/history" />
+      <StatCard icon={Clock} color="amber" label="Pending Assembly In" value={pending ?? "…"} description="Paint Out done, pending allocation" to="/assembly-in" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Assembly In recorded today" to="/assembly-in/history?today=1" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Assembly In completions" to="/assembly-in/history" />
+      <StatCard
+        icon={Layers}
+        color="blue"
+        label="Total Assembly In Records"
+        value={pending === null || totalCompleted === null ? "…" : pending + totalCompleted}
+        description={
+          pending === null || stillAtAssemblyIn === null || movedToAssemblyOut === null
+            ? "Every coach that has reached Assembly In, by status"
+            : `${pending} pending · ${stillAtAssemblyIn} at Assembly In · ${movedToAssemblyOut} moved to Assembly Out`
+        }
+      />
     </StatGrid>
   );
 }
 
 function AssemblyOutStats() {
-  const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [thisWeek, setThisWeek] = useState<number | null>(null);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
-  const [doneToday, setDoneToday] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
 
   useEffect(() => {
-    getAssemblyOutWorklist().then((res) => setAwaiting(res.data.length));
-    getAssemblyOutList().then((res) => {
+    getAssemblyOutWorklist().then((res) => setPending(res.data.length));
+    getAssemblyRecords().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
-      setTotalRecords(res.data.length);
-      setDoneToday(res.data.filter((r) => r.assembly_out_datetime.slice(0, 10) === todayStr).length);
-      setThisWeek(res.data.filter((r) => withinLastWeek(r.assembly_out_datetime)).length);
+      const completed = res.data.filter((r) => r.assembly_out_datetime !== null);
+      setTotalCompleted(completed.length);
+      setCompletedToday(completed.filter((r) => r.assembly_out_datetime!.slice(0, 10) === todayStr).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Assembly Out" value={awaiting ?? "…"} description="Assembly In done, pending allocation" to="/assembly-out" />
-      <StatCard icon={CheckCircle2} color="green" label="Assembled Out Today" value={doneToday ?? "…"} description="Assembly Out recorded today" to="/assembly-out/history?today=1" />
-      <StatCard icon={ClipboardList} color="indigo" label="This Week" value={thisWeek ?? "…"} description="Assembly Out recorded, last 7 days" to="/assembly-out/history" />
-      <StatCard icon={Layers} color="green" label="Total Assembly Out Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/assembly-out/history" />
+      <StatCard icon={Clock} color="amber" label="Pending Assembly Out" value={pending ?? "…"} description="Assembly In done, pending allocation" to="/assembly-out" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Assembly Out recorded today" to="/assembly-out/history?today=1" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Assembly Out completions" to="/assembly-out/history" />
+      <StatCard
+        icon={Layers}
+        color="blue"
+        label="Total Assembly Out Records"
+        value={pending === null || totalCompleted === null ? "…" : pending + totalCompleted}
+        description={
+          pending === null || totalCompleted === null
+            ? "Every coach that has reached Assembly Out, by status"
+            : `${pending} pending · ${totalCompleted} completed`
+        }
+      />
     </StatGrid>
   );
 }
