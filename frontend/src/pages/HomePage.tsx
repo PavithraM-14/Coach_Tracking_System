@@ -29,6 +29,7 @@ import { getPaintRecords } from "../api/paintRecords";
 import { getAssemblyInWorklist } from "../api/assemblyIn";
 import { getAssemblyOutWorklist } from "../api/assemblyOut";
 import { getAssemblyRecords } from "../api/assemblyRecords";
+import { getAssemblyOperationsWorklist, getMyAssemblyOperationCompletions } from "../api/assemblyOperations";
 import { getLocalOutturnList, getLocalOutturnWorklist } from "../api/localOutturn";
 import { getLockSealList, getLockSealWorklist } from "../api/lockSeal";
 import { getBoardOutturnList, getBoardOutturnWorklist } from "../api/boardOutturn";
@@ -673,6 +674,31 @@ function OutturnDispatchStats({ capabilities }: { capabilities: string[] }) {
   );
 }
 
+function AssemblyOperationStats() {
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
+
+  useEffect(() => {
+    getAssemblyOperationsWorklist().then((res) => {
+      setPending(res.data.reduce((sum, row) => sum + row.pending_operations.length, 0));
+    });
+    getMyAssemblyOperationCompletions().then((res) => {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      setTotalCompleted(res.data.length);
+      setCompletedToday(res.data.filter((r) => r.completed_at.slice(0, 10) === todayStr).length);
+    });
+  }, []);
+
+  return (
+    <StatGrid>
+      <StatCard icon={Clock} color="amber" label="Pending Operations" value={pending ?? "…"} description="Operations assigned to you, still pending" to="/assembly-operations" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Operations you completed today" to="/assembly-operations" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time operations you've completed" to="/assembly-operations" />
+    </StatGrid>
+  );
+}
+
 const ACTIVITY_LABEL: Record<RecentActivityRow["type"], string> = {
   SHELL_OUTTURN: "Shell Outturn",
   FURNISHING_IN: "Furnishing In",
@@ -817,6 +843,9 @@ export function HomePage() {
       {user?.role === "PAINT" && <PaintStats capabilities={capabilities} />}
       {user?.role === "ASSEMBLY_PRODUCTION" && <AssemblyStats capabilities={capabilities} />}
       {user?.role === "OUTTURN_DISPATCH" && <OutturnDispatchStats capabilities={capabilities} />}
+      {(user?.role === "ASSEMBLY_OPERATION" ||
+        user?.role === "MECHANICAL_INSPECTION" ||
+        user?.role === "ELECTRICAL_INSPECTION") && <AssemblyOperationStats />}
 
       {hasActivityFeed && <RecentActivity />}
 

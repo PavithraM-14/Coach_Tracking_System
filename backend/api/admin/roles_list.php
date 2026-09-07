@@ -12,10 +12,16 @@ $pdo = Db::get();
 if ($currentUser['role'] === 'PAINT_ADMIN') {
     $rows = $pdo->query("SELECT id, code, name FROM roles WHERE code = 'PAINT'")->fetchAll();
 } elseif ($currentUser['role'] === 'ASSEMBLY_ADMIN') {
-    $rows = $pdo->query("SELECT id, code, name FROM roles WHERE code = 'ASSEMBLY_PRODUCTION'")->fetchAll();
+    $rows = $pdo->query(
+        "SELECT id, code, name FROM roles
+         WHERE code IN ('ASSEMBLY_PRODUCTION', 'ASSEMBLY_OPERATION', 'MECHANICAL_INSPECTION', 'ELECTRICAL_INSPECTION')
+         ORDER BY name"
+    )->fetchAll();
 } else {
     $rows = $pdo->query(
-        "SELECT id, code, name FROM roles WHERE code NOT IN ('PAINT', 'ASSEMBLY_PRODUCTION') ORDER BY name"
+        "SELECT id, code, name FROM roles
+         WHERE code NOT IN ('PAINT', 'ASSEMBLY_PRODUCTION', 'ASSEMBLY_OPERATION', 'MECHANICAL_INSPECTION', 'ELECTRICAL_INSPECTION')
+         ORDER BY name"
     )->fetchAll();
 }
 

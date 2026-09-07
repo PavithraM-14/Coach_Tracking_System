@@ -47,10 +47,10 @@ if ($currentUser['role'] === 'PAINT_ADMIN') {
         Response::error('Paint Admin can only create Paint worker logins.', 403);
     }
 } elseif ($currentUser['role'] === 'ASSEMBLY_ADMIN') {
-    if ($targetRoleCode !== 'ASSEMBLY_PRODUCTION') {
-        Response::error('Assembly Admin can only create Assembly worker logins.', 403);
+    if (!in_array($targetRoleCode, ['ASSEMBLY_PRODUCTION', 'ASSEMBLY_OPERATION', 'MECHANICAL_INSPECTION', 'ELECTRICAL_INSPECTION'], true)) {
+        Response::error('Assembly Admin can only create Assembly worker, Assembly Operation, Mechanical Inspection or Electrical Inspection logins.', 403);
     }
-} elseif (in_array($targetRoleCode, ['PAINT', 'ASSEMBLY_PRODUCTION'], true)) {
+} elseif (in_array($targetRoleCode, ['PAINT', 'ASSEMBLY_PRODUCTION', 'ASSEMBLY_OPERATION', 'MECHANICAL_INSPECTION', 'ELECTRICAL_INSPECTION'], true)) {
     Response::error(
         'Admin no longer creates Paint/Assembly worker logins directly — create a Paint Admin or Assembly Admin login instead, who can then add workers.',
         403

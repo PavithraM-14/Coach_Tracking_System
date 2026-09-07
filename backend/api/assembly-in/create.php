@@ -104,8 +104,18 @@ try {
 
     // Frees up this employee's Assembly In capacity, auto-pulling their next queued coach.
     Assignment::complete($pdo, $coachId, 'ASSEMBLY_IN');
-    // Queues/assigns the coach for Assembly Out, the next stage in the pipeline.
-    Assignment::assignOrQueue($pdo, $coachId, 'ASSEMBLY_OUT');
+
+    // Assembly Out is only queued immediately if this coach has zero
+    // applicable Assembly Operations (see assembly-operations/complete.php,
+    // which queues it for Assembly Out once every applicable operation is
+    // marked done) — otherwise the coach must clear its operations first.
+    $requiredOps = (int) $pdo->query('SELECT COUNT(*) FROM assembly_operations')->fetchColumn();
+    $excludedOps = $pdo->prepare('SELECT COUNT(*) FROM assembly_operation_exclusions WHERE coach_id = :coach_id');
+    $excludedOps->execute(['coach_id' => $coachId]);
+    $requiredOps -= (int) $excludedOps->fetchColumn();
+    if ($requiredOps <= 0) {
+        Assignment::assignOrQueue($pdo, $coachId, 'ASSEMBLY_OUT');
+    }
 
     $pdo->commit();
 } catch (PDOException $e) {

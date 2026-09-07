@@ -36,7 +36,11 @@ INSERT INTO roles (id, code, name, description) VALUES
 -- workers directly — that's delegated to these two roles, each restricted
 -- to their own shop's worker logins and assignment matrix.
 (14, 'PAINT_ADMIN',           'Paint Admin',                  'Manages Paint Shop worker logins and the coach-type assignment matrix'),
-(15, 'ASSEMBLY_ADMIN',        'Assembly Admin',               'Manages Assembly Shop worker logins and the coach-type assignment matrix');
+(15, 'ASSEMBLY_ADMIN',        'Assembly Admin',               'Manages Assembly Shop worker logins and the coach-type assignment matrix'),
+-- Sub-operation worker: Assembly Admin creates these logins and assigns each
+-- one any combination of the 32 Assembly Operations (see assembly_operations
+-- below) — distinct from ASSEMBLY_PRODUCTION, which handles Assembly In/Out.
+(16, 'ASSEMBLY_OPERATION',    'Assembly Operation',           'Performs a specific assembly sub-operation, assigned by Assembly Admin');
 
 -- ===================== Demo users =====================
 -- One login per role. All demo users share the password: Passw0rd!
@@ -322,6 +326,63 @@ INSERT INTO assembly_out_lines (id, code, name, total_slots) VALUES
 (4, 'AOL4', 'Assembly Out Line 4', 10), (5, 'AOL5', 'Assembly Out Line 5', 10), (6, 'AOL6', 'Assembly Out Line 6', 10),
 (7, 'AOL7', 'Assembly Out Line 7', 10), (8, 'AOL8', 'Assembly Out Line 8', 10), (9, 'AOL9', 'Assembly Out Line 9', 10),
 (10, 'AOL10', 'Assembly Out Line 10', 10);
+
+-- The 32 Assembly Operations a coach passes through between Assembly In and
+-- Assembly Out (department codes EP/MP/MI/EI). Display names are derived
+-- from the machine code (strip "tcp_" prefix, underscores -> spaces, Title
+-- Case) — not hand-authored, so a couple read a bit raw (e.g. "R00000001").
+INSERT INTO assembly_operations (id, code, department, sort_order, display_name) VALUES
+(1, 'tcp_roof_clearance', 'EP', 1, 'Roof Clearance'),
+(2, 'tcp_sbc_loading', 'EP', 2, 'Sbc Loading'),
+(3, 'tcp_partition_clearance', 'EP', 3, 'Partition Clearance'),
+(4, 'tcp_ducting', 'MP', 4, 'Ducting'),
+(5, 'tcp_modular_toilet_loading', 'MP', 5, 'Modular Toilet Loading'),
+(6, 'tcp_rmpu_loading', 'EP', 6, 'Rmpu Loading'),
+(7, 'tcp_partition', 'MP', 7, 'Partition'),
+(8, 'tcp_side_panel_fixing', 'MP', 8, 'Side Panel Fixing'),
+(9, 'tcp_ceiling_fixing', 'MP', 9, 'Ceiling Fixing'),
+(10, 'tcp_aux_water_tank', 'MP', 10, 'Aux Water Tank'),
+(11, 'tcp_seats_berths', 'MI', 11, 'Seats Berths'),
+(12, 'tcp_papis', 'MP', 12, 'Papis'),
+(13, 'tcp_fire_alterter', 'MP', 13, 'Fire Alterter'),
+(14, 'tcp_trough_clearance', 'MP', 14, 'Trough Clearance'),
+(15, 'tcp_mech_ac_offering_target', 'MP', 15, 'Mech Ac Offering Target'),
+(16, 'tcp_mech_ac_offering_completed', 'MP', 16, 'Mech Ac Offering Completed'),
+(17, 'tcp_electrical_hv_offering', 'EP', 17, 'Electrical Hv Offering'),
+(18, 'tcp_electrical_ac_offering', 'EP', 18, 'Electrical Ac Offering'),
+(19, 'tcp_electrical_ac_sequence_offering', 'EP', 19, 'Electrical Ac Sequence Offering'),
+(20, 'tcp_elec_hv_clearance', 'EI', 20, 'Elec Hv Clearance'),
+(21, 'tcp_elec_ac_clearance', 'EI', 21, 'Elec Ac Clearance'),
+(22, 'tcp_ac_seq_electrical_clearance', 'EI', 22, 'Ac Seq Electrical Clearance'),
+(23, 'tcp_mech_final_offering', 'MP', 23, 'Mech Final Offering'),
+(24, 'tcp_R00000001', 'MP', 24, 'R00000001'),
+(25, 'tcp_water_leak_clearance', 'MI', 25, 'Water Leak Clearance'),
+(26, 'tcp_brake_clearance', 'MI', 26, 'Brake Clearance'),
+(27, 'tcp_internal_clearance', 'MI', 27, 'Internal Clearance'),
+(28, 'tcp_fire_alarm_clearance', 'MI', 28, 'Fire Alarm Clearance'),
+(29, 'tcp_lock_seal', 'MP', 29, 'Lock Seal'),
+(30, 'tcp_inspection_clearance', 'MP', 30, 'Inspection Clearance'),
+(31, 'tcp_Pitline_clearance_insp', 'MP', 31, 'Pitline Clearance Insp'),
+(32, 'tcp_final_paint_clearance', 'MI', 32, 'Final Paint Clearance');
+
+-- One skill per Assembly Operation — this is how Assembly Admin assigns
+-- operations to a worker (at creation or via Edit Skills), reusing the same
+-- skills/user_skills mechanism as Furnishing/Outturn-Dispatch above instead
+-- of a bespoke assignment table. Split by department: EP/MP operations go
+-- to ASSEMBLY_OPERATION; MI operations to the existing (previously unused)
+-- MECHANICAL_INSPECTION role; EI operations to ELECTRICAL_INSPECTION.
+-- coach_category_id is required by the schema but unused for these roles —
+-- pinned to LHB AC.
+INSERT INTO skills (id, name, operation, role_code, coach_category_id)
+SELECT id + 100, display_name, code,
+       CASE department
+         WHEN 'MI' THEN 'MECHANICAL_INSPECTION'
+         WHEN 'EI' THEN 'ELECTRICAL_INSPECTION'
+         ELSE 'ASSEMBLY_OPERATION'
+       END,
+       1
+FROM assembly_operations
+ORDER BY sort_order;
 
 INSERT INTO assembly_out_line_slots (assembly_out_line_id, slot_number)
 SELECT al.id, n.slot_number

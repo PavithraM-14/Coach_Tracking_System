@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../lib/Assignment.php';
 require_once __DIR__ . '/../../lib/Operations.php';
 
-Auth::requireRole(['ADMIN']);
+$currentUser = Auth::requireRole(['ADMIN', 'ASSEMBLY_ADMIN']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Method not allowed.', 405);
@@ -20,10 +20,32 @@ if ($userId <= 0) {
 
 $pdo = Db::get();
 
-$stmt = $pdo->prepare('SELECT id FROM users WHERE id = :id');
+$stmt = $pdo->prepare('SELECT u.id, r.code AS role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = :id');
 $stmt->execute(['id' => $userId]);
-if (!$stmt->fetch()) {
+$targetUser = $stmt->fetch();
+if (!$targetUser) {
     Response::error('User not found.', 404);
+}
+
+// Assembly Admin may only edit skills for its own Assembly Operation /
+// Mechanical Inspection / Electrical Inspection workers, and only with
+// skills matching that worker's own role — never someone else's
+// Furnishing/Outturn-Dispatch skills, and never a skill from one of these
+// three roles onto a worker of a different one.
+$assemblyOpRoles = ['ASSEMBLY_OPERATION', 'MECHANICAL_INSPECTION', 'ELECTRICAL_INSPECTION'];
+if ($currentUser['role'] === 'ASSEMBLY_ADMIN') {
+    if (!in_array($targetUser['role'], $assemblyOpRoles, true)) {
+        Response::error('Assembly Admin can only edit Assembly Operation / Mechanical Inspection / Electrical Inspection worker skills.', 403);
+    }
+    if ($skillIds) {
+        $inClause = implode(',', array_map('intval', $skillIds));
+        $stmt = $pdo->prepare("SELECT COUNT(*) FROM skills WHERE role_code = :role_code AND id IN ($inClause)");
+        $stmt->execute(['role_code' => $targetUser['role']]);
+        $validCount = (int) $stmt->fetchColumn();
+        if ($validCount !== count(array_unique($skillIds))) {
+            Response::error('One or more skills do not match this worker\'s role.', 400);
+        }
+    }
 }
 
 $pdo->beginTransaction();

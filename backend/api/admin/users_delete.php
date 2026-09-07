@@ -33,8 +33,8 @@ if (!$user) {
 if ($currentUser['role'] === 'PAINT_ADMIN' && $user['role'] !== 'PAINT') {
     Response::error('Paint Admin can only remove Paint worker logins.', 403);
 }
-if ($currentUser['role'] === 'ASSEMBLY_ADMIN' && $user['role'] !== 'ASSEMBLY_PRODUCTION') {
-    Response::error('Assembly Admin can only remove Assembly worker logins.', 403);
+if ($currentUser['role'] === 'ASSEMBLY_ADMIN' && !in_array($user['role'], ['ASSEMBLY_PRODUCTION', 'ASSEMBLY_OPERATION', 'MECHANICAL_INSPECTION', 'ELECTRICAL_INSPECTION'], true)) {
+    Response::error('Assembly Admin can only remove Assembly worker, Assembly Operation, Mechanical Inspection or Electrical Inspection logins.', 403);
 }
 
 // A user who has recorded any transaction is never hard-deleted — that would
@@ -53,6 +53,7 @@ $referenceChecks = [
     'board_outturn_records' => 'recorded_by_user_id',
     'physical_dispatch_records' => 'recorded_by_user_id',
     'coach_assignments' => 'assigned_user_id',
+    'assembly_operation_completions' => 'completed_by_user_id',
 ];
 $hasHistory = false;
 foreach ($referenceChecks as $table => $column) {

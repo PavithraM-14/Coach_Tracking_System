@@ -61,7 +61,10 @@ CREATE TABLE coach_categories (
 CREATE TABLE skills (
   id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
-  operation VARCHAR(30) NOT NULL,        -- 'FURNISHING_IN', 'ASSEMBLY_OP'
+  operation VARCHAR(60) NOT NULL,        -- 'FURNISHING_IN', 'ASSEMBLY_OP', or an
+                                          -- assembly_operations.code (some of
+                                          -- which exceed 30 chars, e.g.
+                                          -- tcp_electrical_ac_sequence_offering)
   role_code VARCHAR(30) NOT NULL,        -- derived from operation: FURNISHING, ASSEMBLY_PRODUCTION
   coach_category_id INT NOT NULL,
   UNIQUE KEY uq_op_category_name (operation, coach_category_id, name),
@@ -346,11 +349,13 @@ CREATE TABLE assembly_slot_occupancy (
 );
 
 -- Assembly Out: submitted by an ASSEMBLY_PRODUCTION employee (operation
--- ASSEMBLY_OUT) once a coach's Assembly In is done. No line/slot of its own
--- — see assembly_slot_occupancy above (assembly_out_line_id/slot_id are kept
--- only for pre-merge historical rows and are no longer populated). End of
--- the pipeline for now — "Assembly Operations" (a stage between Assembly In
--- and Assembly Out) is deferred to a future phase.
+-- ASSEMBLY_OUT) once a coach's Assembly In is done AND every applicable
+-- Assembly Operation is complete (see assembly_operation_* below — that's
+-- the gate: Assignment::assignOrQueue(..., 'ASSEMBLY_OUT') is only called
+-- once operations are done, or immediately if none apply to the coach). No
+-- line/slot of its own — see assembly_slot_occupancy above
+-- (assembly_out_line_id/slot_id are kept only for pre-merge historical rows
+-- and are no longer populated).
 CREATE TABLE assembly_out_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coach_id INT NOT NULL UNIQUE,
@@ -367,6 +372,57 @@ CREATE TABLE assembly_out_transactions (
   FOREIGN KEY (assembly_out_line_id) REFERENCES assembly_out_lines(id),
   FOREIGN KEY (slot_id) REFERENCES assembly_out_line_slots(id),
   FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
+);
+
+-- Assembly Operations: a fixed set of 32 sub-operations (roof clearance,
+-- ducting, electrical offering, etc.) a coach passes through between
+-- Assembly In and Assembly Out, performed by dedicated ASSEMBLY_OPERATION
+-- worker logins that Assembly Admin creates and assigns operations to.
+CREATE TABLE assembly_operations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  code VARCHAR(60) NOT NULL UNIQUE,     -- machine name, e.g. tcp_roof_clearance
+  display_name VARCHAR(100) NOT NULL,   -- human label, e.g. "Roof Clearance"
+  department VARCHAR(4) NOT NULL,       -- EP / MP / MI / EI
+  sort_order INT NOT NULL
+);
+
+-- Which operations a given worker is responsible for is modeled via the
+-- existing skills/user_skills mechanism (one skill per operation,
+-- skills.operation = the operation's code) rather than a bespoke table —
+-- Assembly Admin assigns skills when creating the worker (or edits them
+-- later) the same way Furnishing/Outturn-Dispatch skills already work.
+-- Split by department across three roles, all created/managed by Assembly
+-- Admin: EP/MP operations -> ASSEMBLY_OPERATION, MI -> the (previously
+-- unused) MECHANICAL_INSPECTION, EI -> ELECTRICAL_INSPECTION.
+-- coach_category_id is required by the skills schema but unused for these
+-- roles (none are part of the SKILL_MODULES auto-assignment engine).
+
+-- Per-coach applicability matrix. Default = every operation applies to
+-- every coach; a row here means that operation does NOT apply to that
+-- coach (exclusion model, editable by Assembly Admin).
+CREATE TABLE assembly_operation_exclusions (
+  coach_id INT NOT NULL,
+  operation_id INT NOT NULL,
+  PRIMARY KEY (coach_id, operation_id),
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (operation_id) REFERENCES assembly_operations(id)
+);
+
+-- One row per (assembly_in visit, operation) once a worker marks it done.
+-- Once every applicable operation for a coach's current assembly_in_id has
+-- a row here, the coach is queued for Assembly Out (see complete.php).
+CREATE TABLE assembly_operation_completions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  assembly_in_id INT NOT NULL,
+  operation_id INT NOT NULL,
+  coach_id INT NOT NULL,
+  completed_by_user_id INT NOT NULL,
+  completed_at DATETIME NOT NULL,
+  UNIQUE KEY uniq_assembly_in_operation (assembly_in_id, operation_id),
+  FOREIGN KEY (assembly_in_id) REFERENCES assembly_in_transactions(id),
+  FOREIGN KEY (operation_id) REFERENCES assembly_operations(id),
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (completed_by_user_id) REFERENCES users(id)
 );
 
 -- Final four stages, all OUTTURN_DISPATCH role: no line/slot grid (unlike

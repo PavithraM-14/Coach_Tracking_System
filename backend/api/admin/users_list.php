@@ -8,23 +8,29 @@ $pdo = Db::get();
 
 // Paint Admin / Assembly Admin only ever see the workers they manage; Admin
 // keeps full read-only visibility across every role, including these two.
-$scopedRole = null;
+$scopedRoles = null;
 if ($currentUser['role'] === 'PAINT_ADMIN') {
-    $scopedRole = 'PAINT';
+    $scopedRoles = ['PAINT'];
 } elseif ($currentUser['role'] === 'ASSEMBLY_ADMIN') {
-    $scopedRole = 'ASSEMBLY_PRODUCTION';
+    $scopedRoles = ['ASSEMBLY_PRODUCTION', 'ASSEMBLY_OPERATION', 'MECHANICAL_INSPECTION', 'ELECTRICAL_INSPECTION'];
 }
 
 $sql = 'SELECT u.id, u.employee_no, u.full_name, u.username, u.email, u.is_active, u.created_at, r.code AS role
         FROM users u
         JOIN roles r ON r.id = u.role_id';
-if ($scopedRole !== null) {
-    $sql .= ' WHERE r.code = :scoped_role';
+$params = [];
+if ($scopedRoles !== null) {
+    $placeholders = [];
+    foreach ($scopedRoles as $i => $code) {
+        $placeholders[] = ":scoped_role_{$i}";
+        $params["scoped_role_{$i}"] = $code;
+    }
+    $sql .= ' WHERE r.code IN (' . implode(', ', $placeholders) . ')';
 }
 $sql .= ' ORDER BY u.created_at DESC';
 
 $stmt = $pdo->prepare($sql);
-$stmt->execute($scopedRole !== null ? ['scoped_role' => $scopedRole] : []);
+$stmt->execute($params);
 $rows = $stmt->fetchAll();
 
 $skillRows = $pdo->query(

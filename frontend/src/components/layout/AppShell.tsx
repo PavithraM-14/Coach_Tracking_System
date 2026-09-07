@@ -17,6 +17,7 @@ import {
   Landmark,
   Truck,
   Clock,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -45,6 +46,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/users", label: "User Management", icon: Users, roles: ["ADMIN", "PAINT_ADMIN", "ASSEMBLY_ADMIN"] },
   { to: "/admin/paint-assignments", label: "Paint Assignments", icon: LayoutGrid, roles: ["PAINT_ADMIN"] },
   { to: "/admin/assembly-assignments", label: "Assembly Assignments", icon: LayoutGrid, roles: ["ASSEMBLY_ADMIN"] },
+  { to: "/admin/assembly-operations", label: "Assembly Operations", icon: Wrench, roles: ["ASSEMBLY_ADMIN"] },
   { to: "/line-management", label: "Line Management", icon: Layers, roles: ["ADMIN", "PAINT_ADMIN", "ASSEMBLY_ADMIN"] },
   { to: "/shell-production", label: "Shell Production", icon: Factory, roles: ["SHELL_PRODUCTION"] },
   { to: "/shell-outturn", label: "Shell Outturn", icon: ClipboardCheck, roles: ["SHELL_PRODUCTION"] },
@@ -58,6 +60,12 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/assembly-in", label: "Assembly In", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_IN" },
   { to: "/assembly-out/pending", label: "Assembly Out Pending", icon: Clock, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_OUT" },
   { to: "/assembly-out", label: "Assembly Out", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_OUT" },
+  {
+    to: "/assembly-operations",
+    label: "Assembly Operations",
+    icon: Wrench,
+    roles: ["ASSEMBLY_OPERATION", "MECHANICAL_INSPECTION", "ELECTRICAL_INSPECTION"],
+  },
   { to: "/local-outturn/pending", label: "Local Outturn Pending", icon: Clock, roles: ["OUTTURN_DISPATCH"], module: "LOCAL_OUTTURN" },
   { to: "/local-outturn", label: "Local Outturn", icon: ClipboardCheck, roles: ["OUTTURN_DISPATCH"], module: "LOCAL_OUTTURN" },
   { to: "/lock-seal/pending", label: "Lock & Seal Pending", icon: Clock, roles: ["OUTTURN_DISPATCH"], module: "LOCK_SEAL" },

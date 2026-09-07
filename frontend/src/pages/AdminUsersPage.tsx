@@ -18,7 +18,18 @@ import { useAuth } from "../context/AuthContext";
 // level In/Out matrix (see Admin > Paint Assignments / Assembly
 // Assignments) instead of this category-level skill checkbox model —
 // keeping both would let the two disagree about who's eligible.
-const SKILL_ROLE_CODES = ["FURNISHING", "OUTTURN_DISPATCH"] as const;
+// ASSEMBLY_OPERATION / MECHANICAL_INSPECTION / ELECTRICAL_INSPECTION use the
+// same skill picker for a different purpose: each skill is one of the 32
+// Assembly Operations (see database/seed.sql), split by department across
+// these three roles — not a coach-category capability — reusing this
+// mechanism instead of a bespoke assignment table, per Assembly Admin's request.
+const SKILL_ROLE_CODES = [
+  "FURNISHING",
+  "OUTTURN_DISPATCH",
+  "ASSEMBLY_OPERATION",
+  "MECHANICAL_INSPECTION",
+  "ELECTRICAL_INSPECTION",
+] as const;
 
 // Mirrors backend/lib/Operations.php — a skill is "can perform this operation
 // on this coach category", not just a role/category tag.
@@ -239,7 +250,8 @@ const PAGE_COPY: Record<string, { title: string; description: string }> = {
   },
   ASSEMBLY_ADMIN: {
     title: "Assembly Worker Management",
-    description: "Add, and remove, logins for Assembly Shop workers (Assembly In / Assembly Out).",
+    description:
+      "Add, and remove, logins for Assembly Shop workers (Assembly In / Assembly Out) and Assembly Operation workers — assign the operations they're responsible for as skills below.",
   },
 };
 
@@ -268,10 +280,11 @@ export function AdminUsersPage() {
   function reload() {
     getUsers().then((res) => setUsers(res.data));
     getRoles().then((res) => setRoles(res.data));
-    // Skills only ever apply to Furnishing/Outturn-Dispatch workers (see
-    // SKILL_ROLE_CODES below) — Paint Admin/Assembly Admin manage neither,
-    // and the endpoint is Admin-only, so skip it entirely for them.
-    if (!isScopedAdmin) {
+    // Skills apply to Furnishing/Outturn-Dispatch/Assembly Operation workers
+    // (see SKILL_ROLE_CODES below). Paint Admin manages neither and the
+    // endpoint would reject it, so skip fetching entirely for Paint Admin;
+    // Assembly Admin fetches its own scoped (Assembly Operation only) list.
+    if (!isScopedAdmin || currentUser?.role === "ASSEMBLY_ADMIN") {
       getSkills().then((res) => setSkills(res.data));
     }
   }
@@ -386,7 +399,7 @@ export function AdminUsersPage() {
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
-        {isScopedAdmin ? (
+        {isScopedAdmin && (roles?.length ?? 0) <= 1 ? (
           <div className="col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
             Role: <span className="font-medium text-slate-800">{roles?.[0]?.name ?? "…"}</span>
           </div>
@@ -488,7 +501,7 @@ export function AdminUsersPage() {
         </button>
       </form>
 
-      {skills && <SkillMasterSection skills={skills} onSkillsChanged={reload} />}
+      {skills && !isScopedAdmin && <SkillMasterSection skills={skills} onSkillsChanged={reload} />}
 
       {users && (
         <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">

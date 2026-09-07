@@ -22,6 +22,8 @@ import { PaintRecordsPage } from "./pages/PaintRecordsPage";
 import { AssemblyRecordsPage } from "./pages/AssemblyRecordsPage";
 import { PaintAssignmentMatrixPage } from "./pages/PaintAssignmentMatrixPage";
 import { AssemblyAssignmentMatrixPage } from "./pages/AssemblyAssignmentMatrixPage";
+import { AssemblyOperationsAdminPage } from "./pages/AssemblyOperationsAdminPage";
+import { AssemblyOperationsWorkPage } from "./pages/AssemblyOperationsWorkPage";
 import { CoachDetailPage } from "./pages/CoachDetailPage";
 import { LocalOutturnPage } from "./pages/LocalOutturnPage";
 import { LocalOutturnHistoryPage } from "./pages/LocalOutturnHistoryPage";
@@ -206,6 +208,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="/admin/assembly-operations"
+                    element={
+                      <ProtectedRoute allowedRoles={["ASSEMBLY_ADMIN"]}>
+                        <AssemblyOperationsAdminPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/coaches/:coachId"
                     element={
                       <ProtectedRoute allowedRoles={["ADMIN"]}>
@@ -268,6 +278,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION"]} requiredModule="ASSEMBLY_IN">
                         <AssemblyInPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/assembly-operations"
+                    element={
+                      <ProtectedRoute allowedRoles={["ASSEMBLY_OPERATION", "MECHANICAL_INSPECTION", "ELECTRICAL_INSPECTION"]}>
+                        <AssemblyOperationsWorkPage />
                       </ProtectedRoute>
                     }
                   />

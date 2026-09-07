@@ -13,7 +13,8 @@ export type RoleCode =
   | "OUTTURN_DISPATCH"
   | "MANAGEMENT_VIEWER"
   | "PAINT_ADMIN"
-  | "ASSEMBLY_ADMIN";
+  | "ASSEMBLY_ADMIN"
+  | "ASSEMBLY_OPERATION";
 
 export interface CurrentUser {
   id: number;
@@ -540,4 +541,54 @@ export interface PaintMatrixResponse {
   coach_types: PaintMatrixCoachType[];
   users: PaintMatrixUser[];
   assignments: PaintMatrixCell[];
+}
+
+// Assembly Operations — the 32 sub-operations a coach passes through
+// between Assembly In and Assembly Out (see database/seed.sql, sourced
+// from tbl_stage.sql). ASSEMBLY_ADMIN manages two matrices against this
+// master list: which operations apply to which coach, and which operations
+// each ASSEMBLY_OPERATION worker is responsible for.
+export interface AssemblyOperation {
+  id: number;
+  code: string;
+  display_name: string;
+  department: string;
+  sort_order: number;
+}
+
+export interface AssemblyOperationMatrixCoach {
+  id: number;
+  coach_number: string;
+  coach_type: string;
+}
+
+export interface AssemblyOperationExclusionCell {
+  coach_id: number;
+  operation_id: number;
+}
+
+export interface AssemblyOperationCoachMatrixResponse {
+  coaches: AssemblyOperationMatrixCoach[];
+  operations: AssemblyOperation[];
+  exclusions: AssemblyOperationExclusionCell[];
+}
+
+// One coach with the subset of pending operations relevant to the calling
+// ASSEMBLY_OPERATION worker (backend already filters to just their own
+// assigned + applicable + incomplete operations).
+export interface AssemblyOperationWorklistRow {
+  assembly_in_id: number;
+  coach_id: number;
+  coach_number: string;
+  coach_type: string;
+  pending_operations: AssemblyOperation[];
+}
+
+export interface AssemblyOperationCompletionRow {
+  id: number;
+  coach_id: number;
+  coach_number: string;
+  operation_id: number;
+  display_name: string;
+  completed_at: string;
 }
