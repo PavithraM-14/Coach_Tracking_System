@@ -377,6 +377,7 @@ function PaintInStats() {
             ? "Every coach that has reached Paint In, by status"
             : `${pending} pending · ${stillAtPaintIn} at Paint In · ${movedToPaintOut} moved to Paint Out`
         }
+        to="/paint-in/stages"
       />
     </StatGrid>
   );
@@ -417,6 +418,7 @@ function PaintOutStats() {
             ? "Every coach that has reached Paint Out, by status"
             : `${pending} pending · ${stillAtPaintOut} at Paint Out · ${movedToAssemblyIn} moved to Assembly In`
         }
+        to="/paint-out/stages"
       />
     </StatGrid>
   );
@@ -466,6 +468,7 @@ function AssemblyInStats() {
             ? "Every coach that has reached Assembly In, by status"
             : `${pending} pending · ${stillAtAssemblyIn} at Assembly In · ${movedToAssemblyOut} moved to Assembly Out`
         }
+        to="/assembly-in/stages"
       />
     </StatGrid>
   );
@@ -501,6 +504,7 @@ function AssemblyOutStats() {
             ? "Every coach that has reached Assembly Out, by status"
             : `${pending} pending · ${totalCompleted} completed`
         }
+        to="/assembly-out/stages"
       />
     </StatGrid>
   );

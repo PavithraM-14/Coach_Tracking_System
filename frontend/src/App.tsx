@@ -34,6 +34,10 @@ import { PhysicalDispatchHistoryPage } from "./pages/PhysicalDispatchHistoryPage
 import { ProfilePage } from "./pages/ProfilePage";
 import { PendingCoachesPage } from "./pages/PendingCoachesPage";
 import { FurnishingStagesPage } from "./pages/FurnishingStagesPage";
+import { PaintInStagesPage } from "./pages/PaintInStagesPage";
+import { PaintOutStagesPage } from "./pages/PaintOutStagesPage";
+import { AssemblyInStagesPage } from "./pages/AssemblyInStagesPage";
+import { AssemblyOutStagesPage } from "./pages/AssemblyOutStagesPage";
 import { getFurnishingInWorklist } from "./api/furnishingIn";
 import { getPaintInWorklist } from "./api/paintIn";
 import { getPaintOutWorklist } from "./api/paintOut";
@@ -174,6 +178,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="/paint-in/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["PAINT", "PAINT_ADMIN", "ADMIN"]}>
+                        <PaintInStagesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/admin/paint-assignments"
                     element={
                       <ProtectedRoute allowedRoles={["PAINT_ADMIN"]}>
@@ -227,6 +239,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="/paint-out/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["PAINT", "PAINT_ADMIN", "ADMIN"]}>
+                        <PaintOutStagesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/assembly-in/pending"
                     element={
                       <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION"]} requiredModule="ASSEMBLY_IN">
@@ -256,6 +276,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="/assembly-in/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION", "ASSEMBLY_ADMIN", "ADMIN"]}>
+                        <AssemblyInStagesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/assembly-out/pending"
                     element={
                       <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION"]} requiredModule="ASSEMBLY_OUT">
@@ -281,6 +309,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION", "ASSEMBLY_ADMIN", "ADMIN"]}>
                         <AssemblyRecordsPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/assembly-out/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION", "ASSEMBLY_ADMIN", "ADMIN"]}>
+                        <AssemblyOutStagesPage />
                       </ProtectedRoute>
                     }
                   />
