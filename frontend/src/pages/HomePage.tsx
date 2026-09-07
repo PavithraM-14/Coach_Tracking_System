@@ -21,7 +21,7 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { visibleNavItems } from "../components/layout/AppShell";
 import { getShellOutturnList, getShellOutturnWorklist } from "../api/shellOutturn";
-import { getFurnishingInList } from "../api/furnishingIn";
+import { getFurnishingInList, getFurnishingInWorklist } from "../api/furnishingIn";
 import { getPaintInList, getPaintInWorklist, getPaintLines } from "../api/paintIn";
 import { getPaintOutList, getPaintOutWorklist, getPaintOutLines } from "../api/paintOut";
 import { getAssemblyInList, getAssemblyInWorklist, getAssemblyInLines } from "../api/assemblyIn";
@@ -32,8 +32,7 @@ import { getBoardOutturnList, getBoardOutturnWorklist } from "../api/boardOuttur
 import { getPhysicalDispatchList, getPhysicalDispatchWorklist } from "../api/physicalDispatch";
 import { getUsers, getProductionOrders, getAdminDashboardStats } from "../api/admin";
 import { getRecentActivity } from "../api/dashboard";
-import { getMyAssignmentSummary } from "../api/assignments";
-import type { AdminDashboardStats, AssignmentSummary, RecentActivityRow } from "../types";
+import type { AdminDashboardStats, RecentActivityRow } from "../types";
 import { formatDateTime } from "../utils/dateFormat";
 
 interface StatCardProps {
@@ -221,7 +220,7 @@ function ShellProductionStats() {
 function FurnishingStats() {
   const [total, setTotal] = useState<number | null>(null);
   const [recordedToday, setRecordedToday] = useState<number | null>(null);
-  const [summary, setSummary] = useState<AssignmentSummary | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
 
   useEffect(() => {
     getFurnishingInList().then((res) => {
@@ -229,42 +228,42 @@ function FurnishingStats() {
       setTotal(res.data.length);
       setRecordedToday(res.data.filter((r) => r.furnishing_in_datetime.slice(0, 10) === todayStr).length);
     });
-    getMyAssignmentSummary().then(setSummary);
+    getFurnishingInWorklist().then((res) => setPending(res.data.length));
   }, []);
 
   return (
     <StatGrid>
       <StatCard
-        icon={ClipboardList}
-        color="blue"
-        label="Total Furnishing In Records"
-        value={total ?? "…"}
-        description="All-time, system-wide"
-        to="/furnishing-in/history"
+        icon={Clock}
+        color="amber"
+        label="Pending Furnishing In"
+        value={pending ?? "…"}
+        description="Coaches awaiting Furnishing In"
+        to="/furnishing-in/pending"
       />
       <StatCard
         icon={CheckCircle2}
         color="green"
-        label="Recorded Today"
+        label="Completed Today"
         value={recordedToday ?? "…"}
-        description="Furnishing In records opened today"
+        description="Furnishing In completed today"
         to="/furnishing-in/history?today=1"
       />
       <StatCard
-        icon={PackageCheck}
-        color="amber"
-        label="Assigned to You"
-        value={summary ? summary.assigned_count : "…"}
-        description="Coaches waiting for your Furnishing In"
-        to="/furnishing-in"
+        icon={ClipboardList}
+        color="purple"
+        label="Total Completed"
+        value={total ?? "…"}
+        description="All-time Furnishing In completions"
+        to="/furnishing-in/history"
       />
       <StatCard
-        icon={Clock}
-        color="purple"
-        label="Queued for You"
-        value={summary?.queued_count ?? "…"}
-        description="Matched to your skills, waiting on capacity"
-        to="/furnishing-in"
+        icon={PackageCheck}
+        color="blue"
+        label="Total Furnishing In Records"
+        value={total ?? "…"}
+        description="All Furnishing In records logged in the system"
+        to="/furnishing-in/history"
       />
     </StatGrid>
   );

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFurnishingIn, getFurnishingInWorklist } from "../api/furnishingIn";
-import { getMyAssignmentSummary } from "../api/assignments";
-import type { AssignmentSummary, FurnishingInWorklistCoach } from "../types";
+import type { FurnishingInWorklistCoach } from "../types";
 import { ApiError } from "../api/client";
 import { FieldReadOnly } from "../components/ui/FieldReadOnly";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
@@ -13,7 +12,6 @@ function toLocalDate(datetime: string): Date {
 
 export function FurnishingInPage() {
   const [coaches, setCoaches] = useState<FurnishingInWorklistCoach[] | null>(null);
-  const [summary, setSummary] = useState<AssignmentSummary | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [selectedCoachId, setSelectedCoachId] = useState<number | "">("");
@@ -28,7 +26,6 @@ export function FurnishingInPage() {
     getFurnishingInWorklist()
       .then((res) => setCoaches(res.data))
       .catch((err) => setLoadError(err instanceof ApiError ? err.message : "Failed to load coaches."));
-    getMyAssignmentSummary().then(setSummary);
   }
 
   useEffect(() => {
@@ -89,24 +86,22 @@ export function FurnishingInPage() {
     <div className="max-w-xl">
       <h2 className="text-lg font-semibold text-slate-800">Furnishing In Entry</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Every coach is auto-assigned to you (no cap — Furnishing In is one queue, one employee) as
-        soon as Shell Outturn is recorded. Pick one below — the date starts out matching its Shell
+        Every coach becomes available for Furnishing In (no cap — one queue, one employee) as soon
+        as Shell Outturn is recorded. Pick one below — the date starts out matching its Shell
         Outturn date, but you can change it before submitting. Submitting opens the coach up for
         Paint In.
       </p>
 
-      {summary && (
+      {coaches && (
         <p className="mt-3 inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-          Assigned to you: {summary.assigned_count}
-          {summary.capacity !== null && ` / ${summary.capacity}`}
-          {summary.queued_count > 0 && ` · ${summary.queued_count} queued for you`}
+          Pending Furnishing In: {coaches.length}
         </p>
       )}
 
       {loadError && <p className="mt-4 text-sm text-red-600">{loadError}</p>}
 
       <div className="mt-4">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Coach (assigned to you)</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Coach (Pending)</p>
         <select
           value={selectedCoachId}
           onChange={(e) => handleCoachChange(e.target.value)}
@@ -120,7 +115,7 @@ export function FurnishingInPage() {
           ))}
         </select>
         {coaches && coaches.length === 0 && (
-          <p className="mt-1 text-sm text-slate-500">No coaches currently assigned to you for Furnishing In.</p>
+          <p className="mt-1 text-sm text-slate-500">No coaches currently pending Furnishing In.</p>
         )}
       </div>
 
