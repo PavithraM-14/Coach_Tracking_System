@@ -716,7 +716,16 @@ export function HomePage() {
   const items = visibleNavItems(user?.role, capabilities);
   const hasActivityFeed =
     user?.role &&
-    ["ADMIN", "SHELL_PRODUCTION", "FURNISHING", "PAINT", "ASSEMBLY_PRODUCTION", "OUTTURN_DISPATCH"].includes(user.role);
+    [
+      "ADMIN",
+      "PAINT_ADMIN",
+      "ASSEMBLY_ADMIN",
+      "SHELL_PRODUCTION",
+      "FURNISHING",
+      "PAINT",
+      "ASSEMBLY_PRODUCTION",
+      "OUTTURN_DISPATCH",
+    ].includes(user.role);
   // PAINT/ASSEMBLY_PRODUCTION/OUTTURN_DISPATCH have working modules, just
   // not necessarily configured for this specific login — different message
   // than a role with no module at all (e.g. MECHANICAL_INSPECTION, still

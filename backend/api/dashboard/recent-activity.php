@@ -153,6 +153,47 @@ if ($currentUser['role'] === 'ADMIN') {
          LIMIT $limit"
     );
     $stmt->execute(['user_id1' => $currentUser['sub'], 'user_id2' => $currentUser['sub']]);
+} elseif ($currentUser['role'] === 'PAINT_ADMIN') {
+    // System-wide across all Paint workers, not just this login's own work —
+    // Paint Admin doesn't record transactions itself, it oversees the shop.
+    $stmt = $pdo->prepare(
+        "(SELECT 'PAINT_IN' AS type, c.id AS coach_id, c.coach_number, ct.name AS coach_type,
+                 pit.paint_in_datetime AS occurred_at, u.full_name AS performed_by, pit.remarks
+          FROM paint_in_transactions pit
+          JOIN coaches c ON c.id = pit.coach_id
+          JOIN coach_types ct ON ct.id = c.coach_type_id
+          JOIN users u ON u.id = pit.recorded_by_user_id)
+         UNION ALL
+         (SELECT 'PAINT_OUT', c.id, c.coach_number, ct.name,
+                 pot.paint_out_datetime, u.full_name, pot.remarks
+          FROM paint_out_transactions pot
+          JOIN coaches c ON c.id = pot.coach_id
+          JOIN coach_types ct ON ct.id = c.coach_type_id
+          JOIN users u ON u.id = pot.recorded_by_user_id)
+         ORDER BY occurred_at DESC
+         LIMIT $limit"
+    );
+    $stmt->execute();
+} elseif ($currentUser['role'] === 'ASSEMBLY_ADMIN') {
+    // System-wide across all Assembly workers — same reasoning as Paint Admin above.
+    $stmt = $pdo->prepare(
+        "(SELECT 'ASSEMBLY_IN' AS type, c.id AS coach_id, c.coach_number, ct.name AS coach_type,
+                 ait.assembly_in_datetime AS occurred_at, u.full_name AS performed_by, ait.remarks
+          FROM assembly_in_transactions ait
+          JOIN coaches c ON c.id = ait.coach_id
+          JOIN coach_types ct ON ct.id = c.coach_type_id
+          JOIN users u ON u.id = ait.recorded_by_user_id)
+         UNION ALL
+         (SELECT 'ASSEMBLY_OUT', c.id, c.coach_number, ct.name,
+                 aot.assembly_out_datetime, u.full_name, aot.remarks
+          FROM assembly_out_transactions aot
+          JOIN coaches c ON c.id = aot.coach_id
+          JOIN coach_types ct ON ct.id = c.coach_type_id
+          JOIN users u ON u.id = aot.recorded_by_user_id)
+         ORDER BY occurred_at DESC
+         LIMIT $limit"
+    );
+    $stmt->execute();
 } elseif ($currentUser['role'] === 'OUTTURN_DISPATCH') {
     $stmt = $pdo->prepare(
         "(SELECT 'LOCAL_OUTTURN' AS type, c.id AS coach_id, c.coach_number, ct.name AS coach_type,

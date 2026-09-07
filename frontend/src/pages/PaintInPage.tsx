@@ -13,6 +13,7 @@ export function PaintInPage() {
   const [coaches, setCoaches] = useState<WorklistCoach[] | null>(null);
   const [summary, setSummary] = useState<AssignmentSummary | null>(null);
   const [selectedCoachId, setSelectedCoachId] = useState<number | "">("");
+  const [selectedLineId, setSelectedLineId] = useState<number | "">("");
   const [selectedSlotId, setSelectedSlotId] = useState<number | "">("");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [remarks, setRemarks] = useState("");
@@ -70,6 +71,7 @@ export function PaintInPage() {
         `Paint In recorded for coach ${result.coach_number} on ${result.paint_line}, slot ${result.slot_number}.`,
       );
       setSelectedCoachId("");
+      setSelectedLineId("");
       setSelectedSlotId("");
       setDate(undefined);
       setRemarks("");
@@ -81,7 +83,7 @@ export function PaintInPage() {
     }
   }
 
-  async function handleSlotClick(slot: PaintLine["slots"][number]) {
+  async function handleSlotClick(lineId: number, slot: PaintLine["slots"][number]) {
     if (movingCoach) {
       if (slot.is_occupied) return; // can only drop into an empty slot
       setMoveError(null);
@@ -106,19 +108,22 @@ export function PaintInPage() {
       return;
     }
 
+    setSelectedLineId(lineId);
     setSelectedSlotId(slot.slot_id);
   }
 
   const selectedCoach = coaches?.find((c) => c.coach_id === selectedCoachId);
+  const availableSlotsInSelectedLine =
+    lines?.find((l) => l.paint_line_id === selectedLineId)?.slots.filter((s) => !s.is_occupied) ?? [];
 
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-800">Paint In</h2>
       <p className="mt-1 text-sm text-slate-500">
         Each paint line has a maximum capacity of 10 coaches. Coaches are auto-assigned to you (up
-        to 5 at a time) once Furnishing In is recorded — pick a slot for one of your assigned
-        coaches below. Need to free up a slot? Click the coach occupying it, then click an empty
-        slot to move it there.
+        to 5 at a time) once Furnishing In is recorded — use the Line/Slot dropdowns below, or tap a
+        slot in the grid. Need to free up a slot? Tap the coach occupying it, then tap an empty slot
+        to move it there.
       </p>
 
       <Link
@@ -146,7 +151,7 @@ export function PaintInPage() {
       {movingCoach && (
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
           <span>
-            Moving coach <span className="font-semibold">{movingCoach.coachNumber}</span> — click an empty slot to
+            Moving coach <span className="font-semibold">{movingCoach.coachNumber}</span> — tap an empty slot to
             place it{moving && "…"}
           </span>
           <button
@@ -159,6 +164,50 @@ export function PaintInPage() {
         </div>
       )}
       {moveError && <ValidationMessage kind="error" message={moveError} />}
+
+      {/* Dropdown line/slot picker — the tiny grid buttons below are hard to
+          tap accurately on a phone, so this is the primary way to pick a
+          slot for a new Paint In; the grid still works too and stays in
+          sync (same selectedLineId/selectedSlotId state). */}
+      <div className="mt-4 grid max-w-xl grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Paint Line</label>
+          <select
+            value={selectedLineId}
+            onChange={(e) => {
+              setSelectedLineId(e.target.value ? Number(e.target.value) : "");
+              setSelectedSlotId("");
+            }}
+            className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select a line</option>
+            {lines?.map((line) => {
+              const available = line.slots.filter((s) => !s.is_occupied).length;
+              return (
+                <option key={line.paint_line_id} value={line.paint_line_id} disabled={available === 0}>
+                  {line.name} ({available} available)
+                </option>
+              );
+            })}
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Slot</label>
+          <select
+            value={selectedSlotId}
+            onChange={(e) => setSelectedSlotId(e.target.value ? Number(e.target.value) : "")}
+            disabled={!selectedLineId}
+            className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
+          >
+            <option value="">{selectedLineId ? "Select a slot" : "Select a line first"}</option>
+            {availableSlotsInSelectedLine.map((slot) => (
+              <option key={slot.slot_id} value={slot.slot_id}>
+                Slot {slot.slot_number}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {lines && (
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
@@ -174,10 +223,10 @@ export function PaintInPage() {
                     key={slot.slot_id}
                     type="button"
                     disabled={moving}
-                    onClick={() => handleSlotClick(slot)}
+                    onClick={() => handleSlotClick(line.paint_line_id, slot)}
                     title={
                       slot.is_occupied
-                        ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""} (click to move)`
+                        ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""} (tap to move)`
                         : movingCoach
                           ? `Drop ${movingCoach.coachNumber} in slot ${slot.slot_number}`
                           : `Slot ${slot.slot_number}`
