@@ -105,7 +105,7 @@ export function FurnishingStagesPage() {
                 <th className="px-4 py-2">Coach No.</th>
                 <th className="px-4 py-2">Coach Type</th>
                 <th className="px-4 py-2">Current Stage</th>
-                <th className="px-4 py-2">Since</th>
+                <th className="px-4 py-2">Date</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
