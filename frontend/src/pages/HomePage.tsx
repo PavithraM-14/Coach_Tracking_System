@@ -364,7 +364,7 @@ function PaintInStats() {
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Pending Paint In" value={pending ?? "…"} description="Furnishing In done, pending allocation" to="/paint-in" />
+      <StatCard icon={Clock} color="amber" label="Pending Paint In" value={pending ?? "…"} description="Furnishing In done, pending allocation" to="/paint-in/pending" />
       <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Paint In recorded today" to="/paint-in/history?today=1" />
       <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Paint In completions" to="/paint-in/history" />
       <StatCard
@@ -405,7 +405,7 @@ function PaintOutStats() {
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Pending Paint Out" value={pending ?? "…"} description="Paint In done, pending allocation" to="/paint-out" />
+      <StatCard icon={Clock} color="amber" label="Pending Paint Out" value={pending ?? "…"} description="Paint In done, pending allocation" to="/paint-out/pending" />
       <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Paint Out recorded today" to="/paint-out/history?today=1" />
       <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Paint Out completions" to="/paint-out/history" />
       <StatCard
@@ -455,7 +455,7 @@ function AssemblyInStats() {
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Pending Assembly In" value={pending ?? "…"} description="Paint Out done, pending allocation" to="/assembly-in" />
+      <StatCard icon={Clock} color="amber" label="Pending Assembly In" value={pending ?? "…"} description="Paint Out done, pending allocation" to="/assembly-in/pending" />
       <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Assembly In recorded today" to="/assembly-in/history?today=1" />
       <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Assembly In completions" to="/assembly-in/history" />
       <StatCard
@@ -491,7 +491,7 @@ function AssemblyOutStats() {
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Pending Assembly Out" value={pending ?? "…"} description="Assembly In done, pending allocation" to="/assembly-out" />
+      <StatCard icon={Clock} color="amber" label="Pending Assembly Out" value={pending ?? "…"} description="Assembly In done, pending allocation" to="/assembly-out/pending" />
       <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Assembly Out recorded today" to="/assembly-out/history?today=1" />
       <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Assembly Out completions" to="/assembly-out/history" />
       <StatCard
@@ -538,7 +538,7 @@ function LocalOutturnStats() {
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Pending Local Outturn" value={pending ?? "…"} description="Assembly Out done, pending allocation" to="/local-outturn" />
+      <StatCard icon={Clock} color="amber" label="Pending Local Outturn" value={pending ?? "…"} description="Assembly Out done, pending allocation" to="/local-outturn/pending" />
       <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Local Outturn recorded today" to="/local-outturn/history?today=1" />
       <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Local Outturn completions" to="/local-outturn/history" />
       <StatCard
@@ -573,7 +573,7 @@ function LockSealStats() {
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Pending Lock & Seal" value={pending ?? "…"} description="Local Outturn done, pending allocation" to="/lock-seal" />
+      <StatCard icon={Clock} color="amber" label="Pending Lock & Seal" value={pending ?? "…"} description="Local Outturn done, pending allocation" to="/lock-seal/pending" />
       <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Lock & Seal recorded today" to="/lock-seal/history?today=1" />
       <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Lock & Seal completions" to="/lock-seal/history" />
       <StatCard
@@ -608,7 +608,7 @@ function BoardOutturnStats() {
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Pending Board Outturn" value={pending ?? "…"} description="Lock & Seal done, pending allocation" to="/board-outturn" />
+      <StatCard icon={Clock} color="amber" label="Pending Board Outturn" value={pending ?? "…"} description="Lock & Seal done, pending allocation" to="/board-outturn/pending" />
       <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Railway Board Outturn recorded today" to="/board-outturn/history?today=1" />
       <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Board Outturn completions" to="/board-outturn/history" />
       <StatCard
@@ -643,7 +643,7 @@ function PhysicalDispatchStats() {
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Pending Dispatch" value={pending ?? "…"} description="Board Outturn done, pending allocation" to="/physical-dispatch" />
+      <StatCard icon={Clock} color="amber" label="Pending Dispatch" value={pending ?? "…"} description="Board Outturn done, pending allocation" to="/physical-dispatch/pending" />
       <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Physical Dispatch recorded today" to="/physical-dispatch/history?today=1" />
       <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Dispatch completions" to="/physical-dispatch/history" />
       <StatCard
