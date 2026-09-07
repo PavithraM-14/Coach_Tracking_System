@@ -41,7 +41,7 @@ $stmt = $pdo->prepare(
      FROM paint_line_slots s
      JOIN paint_lines pl ON pl.id = s.paint_line_id
      LEFT JOIN paint_slot_occupancy pso ON pso.slot_id = s.id AND pso.released_at IS NULL
-     WHERE s.id = :slot_id AND pso.id IS NULL'
+     WHERE s.id = :slot_id AND pso.id IS NULL AND pl.is_active = 1 AND s.is_active = 1'
 );
 $stmt->execute(['slot_id' => $toSlotId]);
 $toSlot = $stmt->fetch();

@@ -10,7 +10,8 @@ $stmt = $pdo->prepare(
             ct.name AS coach_type, cc.name AS coach_category,
             p.name AS plant, py.year_code AS production_year,
             po.bo_number, po.bo_item, po.installation_no,
-            prior.lock_seal_datetime AS lock_seal_datetime
+            prior.lock_seal_datetime AS lock_seal_datetime,
+            lor.outturn_serial_no AS outturn_serial_no
      FROM coach_assignments ca
      JOIN coaches c ON c.id = ca.coach_id
      JOIN production_orders po ON po.id = c.production_order_id
@@ -19,6 +20,7 @@ $stmt = $pdo->prepare(
      JOIN plants p ON p.id = po.plant_id
      JOIN production_years py ON py.id = po.production_year_id
      JOIN lock_seal_records prior ON prior.coach_id = c.id
+     JOIN local_outturn_records lor ON lor.coach_id = c.id
      WHERE ca.module = 'BOARD_OUTTURN' AND ca.status = 'ASSIGNED' AND ca.assigned_user_id = :user_id
      ORDER BY c.coach_number"
 );
@@ -38,6 +40,7 @@ $data = array_map(function ($row) {
         'bo_item' => (int) $row['bo_item'],
         'installation_no' => $row['installation_no'],
         'lock_seal_datetime' => $row['lock_seal_datetime'],
+        'outturn_serial_no' => $row['outturn_serial_no'],
     ];
 }, $rows);
 

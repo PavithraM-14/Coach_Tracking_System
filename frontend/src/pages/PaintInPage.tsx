@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { createPaintIn, getPaintInWorklist, getPaintLines, movePaintCoach } from "../api/paintIn";
+import { createPaintIn, getPaintInWorklist, getPaintLines, movePaintCoach, type VendorCode } from "../api/paintIn";
 import { getMyAssignmentSummary } from "../api/assignments";
 import type { AssignmentSummary, PaintLine, WorklistCoach } from "../types";
 import { ApiError } from "../api/client";
@@ -16,6 +16,7 @@ export function PaintInPage() {
   const [selectedLineId, setSelectedLineId] = useState<number | "">("");
   const [selectedSlotId, setSelectedSlotId] = useState<number | "">("");
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [vendor, setVendor] = useState<VendorCode | "">("");
   const [remarks, setRemarks] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -57,6 +58,10 @@ export function PaintInPage() {
       setFieldError("Paint In date is required.");
       return;
     }
+    if (!vendor) {
+      setFieldError("Select a vendor.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -66,6 +71,7 @@ export function PaintInPage() {
         paint_in_date: formatDateForDisplay(date),
         paint_in_time: "00:00",
         remarks: remarks || undefined,
+        vendor,
       });
       setSuccess(
         `Paint In recorded for coach ${result.coach_number} on ${result.paint_line}, slot ${result.slot_number}.`,
@@ -74,6 +80,7 @@ export function PaintInPage() {
       setSelectedLineId("");
       setSelectedSlotId("");
       setDate(undefined);
+      setVendor("");
       setRemarks("");
       reload();
     } catch (err) {
@@ -115,7 +122,7 @@ export function PaintInPage() {
   );
 
   const selectedCoach = coaches?.find((c) => c.coach_id === selectedCoachId);
-  const availableSlotsInSelectedLine =
+  const slotsInSelectedLine =
     lines?.find((l) => l.paint_line_id === selectedLineId)?.slots.filter((s) => !s.is_occupied) ?? [];
 
   return (
@@ -176,8 +183,12 @@ export function PaintInPage() {
             {lines?.map((line) => {
               const available = line.slots.filter((s) => !s.is_occupied).length;
               return (
-                <option key={line.paint_line_id} value={line.paint_line_id} disabled={available === 0}>
-                  {line.name} ({available} available)
+                <option
+                  key={line.paint_line_id}
+                  value={line.paint_line_id}
+                  disabled={!line.is_active || available === 0}
+                >
+                  {line.name} ({line.is_active ? `${available} available` : "Blocked"})
                 </option>
               );
             })}
@@ -192,9 +203,9 @@ export function PaintInPage() {
             className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             <option value="">{selectedLineId ? "Select a slot" : "Select a line first"}</option>
-            {availableSlotsInSelectedLine.map((slot) => (
-              <option key={slot.slot_id} value={slot.slot_id}>
-                Slot {slot.slot_number}
+            {slotsInSelectedLine.map((slot) => (
+              <option key={slot.slot_id} value={slot.slot_id} disabled={!slot.is_active}>
+                Slot {slot.slot_number}{!slot.is_active ? " (Blocked)" : ""}
               </option>
             ))}
           </select>
@@ -277,6 +288,21 @@ export function PaintInPage() {
 
         <div className="mt-4 max-w-xs">
           <DatePickerField label="Paint In Date" value={date} onChange={setDate} />
+        </div>
+
+        <div className="mt-4 max-w-xs">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Vendor</p>
+          <select
+            value={vendor}
+            onChange={(e) => setVendor(e.target.value as VendorCode | "")}
+            className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select a vendor</option>
+            <option value="ICF">ICF</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+            <option value="C">C</option>
+          </select>
         </div>
 
         <div className="mt-4">

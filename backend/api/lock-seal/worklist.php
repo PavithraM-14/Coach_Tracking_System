@@ -10,7 +10,8 @@ $stmt = $pdo->prepare(
             ct.name AS coach_type, cc.name AS coach_category,
             p.name AS plant, py.year_code AS production_year,
             po.bo_number, po.bo_item, po.installation_no,
-            prior.local_outturn_datetime AS local_outturn_datetime
+            prior.local_outturn_datetime AS local_outturn_datetime,
+            prior.outturn_serial_no AS outturn_serial_no
      FROM coach_assignments ca
      JOIN coaches c ON c.id = ca.coach_id
      JOIN production_orders po ON po.id = c.production_order_id
@@ -38,6 +39,7 @@ $data = array_map(function ($row) {
         'bo_item' => (int) $row['bo_item'],
         'installation_no' => $row['installation_no'],
         'local_outturn_datetime' => $row['local_outturn_datetime'],
+        'outturn_serial_no' => $row['outturn_serial_no'],
     ];
 }, $rows);
 

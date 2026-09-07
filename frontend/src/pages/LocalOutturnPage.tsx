@@ -18,6 +18,7 @@ export function LocalOutturnPage() {
 
   const [selectedCoachId, setSelectedCoachId] = useState<number | "">("");
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [serialNo, setSerialNo] = useState("");
   const [remarks, setRemarks] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -60,6 +61,10 @@ export function LocalOutturnPage() {
       setFieldError("Local Outturn date is required.");
       return;
     }
+    if (!serialNo.trim()) {
+      setFieldError("Outturn Serial No. is required.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -68,12 +73,14 @@ export function LocalOutturnPage() {
         local_outturn_date: formatDateForDisplay(date),
         local_outturn_time: "00:00",
         remarks: remarks || undefined,
+        outturn_serial_no: serialNo.trim(),
       });
       setSuccess(
         `Local Outturn recorded for coach ${result.coach_number} on ${result.local_outturn_datetime.slice(0, 10)} — now eligible for Lock & Seal.`,
       );
       setSelectedCoachId("");
       setDate(undefined);
+      setSerialNo("");
       setRemarks("");
       reload();
     } catch (err) {
@@ -132,6 +139,17 @@ export function LocalOutturnPage() {
 
       <div className="mt-5 max-w-xs">
         <DatePickerField label="Local Outturn Date" value={date} onChange={setDate} />
+      </div>
+
+      <div className="mt-4 max-w-xs">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Outturn Serial No.</p>
+        <input
+          type="text"
+          value={serialNo}
+          onChange={(e) => setSerialNo(e.target.value)}
+          placeholder="e.g. OT-2026-00123"
+          className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
       </div>
       {fieldError && <ValidationMessage kind="error" message={fieldError} />}
 

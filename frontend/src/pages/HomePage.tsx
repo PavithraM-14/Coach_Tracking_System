@@ -776,14 +776,9 @@ function RecentActivity() {
       {filtered && filtered.length > 0 && (
         <div className="mt-4 divide-y divide-slate-100">
           {filtered.map((row, i) => {
-            const RowTag = isAdmin ? Link : "div";
-            const rowProps = isAdmin ? { to: `/admin/coaches/${row.coach_id}` } : {};
-            return (
-              <RowTag
-                key={i}
-                {...rowProps}
-                className={`flex items-center justify-between py-3 ${isAdmin ? "-mx-2 rounded-lg px-2 hover:bg-slate-50" : ""}`}
-              >
+            const rowClassName = `flex items-center justify-between py-3 ${isAdmin ? "-mx-2 rounded-lg px-2 hover:bg-slate-50" : ""}`;
+            const rowContent = (
+              <>
                 <div>
                   <p className="text-sm font-medium text-slate-800">
                     Coach {row.coach_number} <span className="text-slate-400">·</span>{" "}
@@ -797,7 +792,16 @@ function RecentActivity() {
                   </span>
                   <p className="mt-1 text-xs text-slate-400">{formatDateTime(row.occurred_at)}</p>
                 </div>
-              </RowTag>
+              </>
+            );
+            return isAdmin ? (
+              <Link key={i} to={`/admin/coaches/${row.coach_id}`} className={rowClassName}>
+                {rowContent}
+              </Link>
+            ) : (
+              <div key={i} className={rowClassName}>
+                {rowContent}
+              </div>
             );
           })}
         </div>

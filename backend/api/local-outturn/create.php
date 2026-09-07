@@ -14,9 +14,13 @@ $coachId = (int) ($body['coach_id'] ?? 0);
 $inDate = trim($body['local_outturn_date'] ?? '');
 $inTime = trim($body['local_outturn_time'] ?? '');
 $remarks = isset($body['remarks']) ? trim((string) $body['remarks']) : null;
+$serialNo = trim($body['outturn_serial_no'] ?? '');
 
 if ($coachId <= 0) {
     Response::error('coach_id is required.', 400);
+}
+if ($serialNo === '') {
+    Response::error('outturn_serial_no is required.', 400);
 }
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $inDate)) {
     Response::error('local_outturn_date is required in YYYY-MM-DD format.', 400);
@@ -60,8 +64,8 @@ if (!$assignment || (int) $assignment['assigned_user_id'] !== (int) $currentUser
 $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare(
-        'INSERT INTO local_outturn_records (coach_id, assembly_out_id, local_outturn_datetime, remarks, recorded_by_user_id)
-         VALUES (:coach_id, :assembly_out_id, :local_outturn_datetime, :remarks, :recorded_by_user_id)'
+        'INSERT INTO local_outturn_records (coach_id, assembly_out_id, local_outturn_datetime, remarks, recorded_by_user_id, outturn_serial_no)
+         VALUES (:coach_id, :assembly_out_id, :local_outturn_datetime, :remarks, :recorded_by_user_id, :outturn_serial_no)'
     );
     $stmt->execute([
         'coach_id' => $coachId,
@@ -69,6 +73,7 @@ try {
         'local_outturn_datetime' => $inDatetime,
         'remarks' => $remarks,
         'recorded_by_user_id' => $currentUser['sub'],
+        'outturn_serial_no' => $serialNo,
     ]);
     $newId = (int) $pdo->lastInsertId();
 
@@ -93,4 +98,5 @@ Response::ok([
     'local_outturn_id' => $newId,
     'coach_number' => $coach['coach_number'],
     'local_outturn_datetime' => $inDatetime,
+    'outturn_serial_no' => $serialNo,
 ], 201);

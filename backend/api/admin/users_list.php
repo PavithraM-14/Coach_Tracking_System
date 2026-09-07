@@ -15,7 +15,7 @@ if ($currentUser['role'] === 'PAINT_ADMIN') {
     $scopedRoles = ['ASSEMBLY_PRODUCTION', 'ASSEMBLY_OPERATION', 'MECHANICAL_INSPECTION', 'ELECTRICAL_INSPECTION'];
 }
 
-$sql = 'SELECT u.id, u.employee_no, u.full_name, u.username, u.email, u.is_active, u.created_at, r.code AS role
+$sql = 'SELECT u.id, u.employee_no, u.full_name, u.username, u.email, u.is_active, u.created_at, u.assigned_vendor, r.code AS role
         FROM users u
         JOIN roles r ON r.id = u.role_id';
 $params = [];
@@ -55,6 +55,7 @@ $data = array_map(function ($row) use ($skillsByUser) {
         'is_active' => (bool) $row['is_active'],
         'created_at' => $row['created_at'],
         'skills' => $skillsByUser[(int) $row['id']] ?? [],
+        'assigned_vendor' => $row['assigned_vendor'],
     ];
 }, $rows);
 

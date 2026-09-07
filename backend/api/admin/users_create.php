@@ -18,6 +18,7 @@ $email = trim((string) ($body['email'] ?? ''));
 $password = (string) ($body['password'] ?? '');
 $roleId = (int) ($body['role_id'] ?? 0);
 $skillIds = array_map('intval', $body['skill_ids'] ?? []);
+$assignedVendor = trim($body['assigned_vendor'] ?? '');
 
 if ($employeeNo === '' || $fullName === '' || $username === '' || $password === '' || $roleId <= 0) {
     Response::error('employee_no, full_name, username, password and role_id are all required.', 400);
@@ -27,6 +28,9 @@ if (strlen($password) < 6) {
 }
 if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
     Response::error('Email address is not valid.', 400);
+}
+if ($assignedVendor !== '' && !in_array($assignedVendor, ['ICF', 'A', 'B', 'C'], true)) {
+    Response::error('assigned_vendor must be one of ICF, A, B, C.', 400);
 }
 
 $pdo = Db::get();
@@ -72,8 +76,8 @@ if ($stmt->fetch()) {
 $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare(
-        'INSERT INTO users (employee_no, full_name, username, email, password_hash, role_id)
-         VALUES (:employee_no, :full_name, :username, :email, :password_hash, :role_id)'
+        'INSERT INTO users (employee_no, full_name, username, email, password_hash, role_id, assigned_vendor)
+         VALUES (:employee_no, :full_name, :username, :email, :password_hash, :role_id, :assigned_vendor)'
     );
     $stmt->execute([
         'employee_no' => $employeeNo,
@@ -82,6 +86,7 @@ try {
         'email' => $email !== '' ? $email : null,
         'password_hash' => password_hash($password, PASSWORD_BCRYPT),
         'role_id' => $roleId,
+        'assigned_vendor' => $assignedVendor !== '' ? $assignedVendor : null,
     ]);
     $userId = (int) $pdo->lastInsertId();
 

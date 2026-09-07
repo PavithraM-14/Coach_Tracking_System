@@ -28,12 +28,36 @@ export interface CreateUserInput {
   password: string;
   role_id: number;
   skill_ids?: number[];
+  assigned_vendor?: string;
 }
 
 export function createUser(input: CreateUserInput): Promise<{ id: number }> {
   return apiRequest("/admin/users_create.php", {
     method: "POST",
     body: input,
+  });
+}
+
+export interface BulkCreateUserRow {
+  employee_no: string;
+  full_name: string;
+  username: string;
+  email: string;
+  role: string;
+  assigned_vendor: string;
+}
+
+export interface BulkCreateUsersResponse {
+  created_count: number;
+  skipped_count: number;
+  created: Array<{ row: number; username: string; employee_no: string }>;
+  skipped: Array<{ row: number; reason: string }>;
+}
+
+export function bulkCreateUsers(rows: BulkCreateUserRow[]): Promise<BulkCreateUsersResponse> {
+  return apiRequest("/admin/users_bulk_create.php", {
+    method: "POST",
+    body: { rows },
   });
 }
 

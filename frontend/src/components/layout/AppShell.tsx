@@ -18,6 +18,7 @@ import {
   Truck,
   Clock,
   Wrench,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -74,6 +75,7 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/board-outturn", label: "Railway Board Outturn", icon: Landmark, roles: ["OUTTURN_DISPATCH"], module: "BOARD_OUTTURN" },
   { to: "/physical-dispatch/pending", label: "Physical Dispatch Pending", icon: Clock, roles: ["OUTTURN_DISPATCH"], module: "PHYSICAL_DISPATCH" },
   { to: "/physical-dispatch", label: "Physical Dispatch", icon: Truck, roles: ["OUTTURN_DISPATCH"], module: "PHYSICAL_DISPATCH" },
+  { to: "/vendor/coaches", label: "My Coaches", icon: Building2, roles: ["VENDOR_SNI"] },
 ];
 
 export function visibleNavItems(role: RoleCode | undefined, capabilities: string[] = []): NavItem[] {

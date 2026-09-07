@@ -11,7 +11,7 @@ $pdo = Db::get();
 
 $rows = $pdo->query(
     "SELECT pit.id AS paint_in_id, c.id AS coach_id, c.coach_number, ct.name AS coach_type,
-            pit.paint_in_datetime, uin.full_name AS paint_in_by,
+            pit.paint_in_datetime, uin.full_name AS paint_in_by, pit.vendor,
             pot.paint_out_datetime, uout.full_name AS paint_out_by
      FROM paint_in_transactions pit
      JOIN coaches c ON c.id = pit.coach_id
@@ -56,6 +56,7 @@ $data = array_map(function ($row) use ($historyByPaintIn) {
         'coach_type' => $row['coach_type'],
         'paint_in_datetime' => $row['paint_in_datetime'],
         'paint_in_by' => $row['paint_in_by'],
+        'vendor' => $row['vendor'],
         'paint_out_datetime' => $row['paint_out_datetime'],
         'paint_out_by' => $row['paint_out_by'],
         'current_line' => $current['paint_line'] ?? null,

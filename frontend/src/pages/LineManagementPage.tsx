@@ -1,10 +1,17 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PaintBucket, Wrench } from "lucide-react";
-import { createPaintIn, getPaintInWorklist, getPaintLines } from "../api/paintIn";
-import { getAssemblyInLines } from "../api/assemblyIn";
+import {
+  createPaintIn,
+  getPaintInWorklist,
+  getPaintLines,
+  setPaintLineActive,
+  setPaintSlotActive,
+  type VendorCode,
+} from "../api/paintIn";
+import { getAssemblyInLines, setAssemblyLineActive, setAssemblySlotActive } from "../api/assemblyIn";
 import { getMyAssignmentSummary } from "../api/assignments";
-import type { AssemblyInLine, AssignmentSummary, PaintLine, WorklistCoach } from "../types";
+import type { AssemblyInLine, AssemblyInLineSlot, AssignmentSummary, PaintLine, PaintLineSlot, WorklistCoach } from "../types";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { FieldReadOnly } from "../components/ui/FieldReadOnly";
@@ -16,15 +23,44 @@ import { DatePickerField, formatDateForDisplay } from "../components/ui/DatePick
 // equivalent lives in PaintInLines below since a PAINT login can also
 // allocate from that same view.
 function AssemblyLinesView() {
+  const { user } = useAuth();
+  const canManage = user?.role === "ADMIN" || user?.role === "ASSEMBLY_ADMIN";
+
   const [lines, setLines] = useState<AssemblyInLine[] | null>(null);
   const [bookedCount, setBookedCount] = useState<number | null>(null);
+  const [togglingLineId, setTogglingLineId] = useState<number | null>(null);
+  const [togglingSlotId, setTogglingSlotId] = useState<number | null>(null);
 
-  useEffect(() => {
+  function reload() {
     getAssemblyInLines().then((res) => {
       setLines(res.data);
       setBookedCount(res.booked_count);
     });
+  }
+
+  useEffect(() => {
+    reload();
   }, []);
+
+  async function handleToggle(line: AssemblyInLine) {
+    setTogglingLineId(line.assembly_in_line_id);
+    try {
+      await setAssemblyLineActive(line.assembly_in_line_id, !line.is_active);
+      reload();
+    } finally {
+      setTogglingLineId(null);
+    }
+  }
+
+  async function handleSlotToggle(slot: AssemblyInLineSlot) {
+    setTogglingSlotId(slot.slot_id);
+    try {
+      await setAssemblySlotActive(slot.slot_id, !slot.is_active);
+      reload();
+    } finally {
+      setTogglingSlotId(null);
+    }
+  }
 
   return (
     <div>
@@ -59,30 +95,76 @@ function AssemblyLinesView() {
       {lines && (
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {lines.map((line) => (
-            <div key={line.assembly_in_line_id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-              <p className="text-sm font-semibold text-slate-800">{line.name}</p>
+            <div
+              key={line.assembly_in_line_id}
+              className={`rounded-xl border p-3 shadow-sm ${
+                line.is_active ? "border-slate-200 bg-white" : "border-red-200 bg-red-50"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-800">{line.name}</p>
+                {!line.is_active && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">
+                    Blocked
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500">
                 {line.occupied_slots} / {line.total_slots} occupied
               </p>
               <div className="mt-2 grid grid-cols-5 gap-1">
-                {line.slots.map((slot) => (
-                  <button
-                    key={slot.slot_id}
-                    type="button"
-                    disabled
-                    title={
-                      slot.is_occupied
-                        ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""}`
-                        : `Slot ${slot.slot_number}`
-                    }
-                    className={`cursor-default rounded py-1 text-xs font-medium ${
-                      slot.is_occupied ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {slot.slot_number}
-                  </button>
-                ))}
+                {line.slots.map((slot) => {
+                  const clickableToToggle =
+                    canManage && line.is_active && !slot.is_occupied && togglingSlotId !== slot.slot_id;
+                  return (
+                    <button
+                      key={slot.slot_id}
+                      type="button"
+                      disabled={slot.is_occupied || !clickableToToggle}
+                      onClick={() => clickableToToggle && handleSlotToggle(slot)}
+                      title={
+                        slot.is_occupied
+                          ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""}`
+                          : !slot.is_active
+                            ? `Slot ${slot.slot_number} — Blocked${clickableToToggle ? " (click to unblock)" : ""}`
+                            : `Slot ${slot.slot_number}${clickableToToggle ? " (click to block)" : ""}`
+                      }
+                      className={`rounded py-1 text-xs font-medium ${
+                        slot.is_occupied
+                          ? "cursor-not-allowed bg-orange-100 text-orange-700"
+                          : !line.is_active
+                            ? "cursor-default bg-slate-200 text-slate-400"
+                            : !slot.is_active
+                              ? `bg-red-100 text-red-700 ${clickableToToggle ? "cursor-pointer hover:bg-red-200" : "cursor-default"}`
+                              : `bg-green-100 text-green-800 ${clickableToToggle ? "cursor-pointer hover:bg-green-200" : "cursor-default"}`
+                      }`}
+                    >
+                      {slot.slot_number}
+                    </button>
+                  );
+                })}
               </div>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => handleToggle(line)}
+                  disabled={togglingLineId === line.assembly_in_line_id}
+                  className={`mt-2 w-full rounded-lg px-2 py-1 text-xs font-medium disabled:opacity-50 ${
+                    line.is_active
+                      ? "bg-red-50 text-red-700 hover:bg-red-100"
+                      : "bg-green-50 text-green-700 hover:bg-green-100"
+                  }`}
+                >
+                  {togglingLineId === line.assembly_in_line_id
+                    ? "Updating..."
+                    : line.is_active
+                      ? "Block Line"
+                      : "Unblock Line"}
+                </button>
+              )}
+              {canManage && line.is_active && (
+                <p className="mt-1 text-center text-[10px] text-slate-400">Click a green slot to block just that slot</p>
+              )}
               {line.slots.some((s) => s.is_occupied) && (
                 <div className="mt-2 space-y-0.5 border-t border-slate-100 pt-2">
                   {line.slots
@@ -110,6 +192,7 @@ function AssemblyLinesView() {
 function PaintInLines() {
   const { user } = useAuth();
   const canAllocate = user?.role === "PAINT";
+  const canManage = user?.role === "ADMIN" || user?.role === "PAINT_ADMIN";
 
   const [lines, setLines] = useState<PaintLine[] | null>(null);
   const [bookedCount, setBookedCount] = useState<number | null>(null);
@@ -118,11 +201,34 @@ function PaintInLines() {
   const [selectedCoachId, setSelectedCoachId] = useState<number | "">("");
   const [selectedSlotId, setSelectedSlotId] = useState<number | "">("");
   const [date, setDate] = useState<Date | undefined>(undefined);
+  const [vendor, setVendor] = useState<VendorCode | "">("");
   const [remarks, setRemarks] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [togglingLineId, setTogglingLineId] = useState<number | null>(null);
+  const [togglingSlotId, setTogglingSlotId] = useState<number | null>(null);
+
+  async function handleToggle(line: PaintLine) {
+    setTogglingLineId(line.paint_line_id);
+    try {
+      await setPaintLineActive(line.paint_line_id, !line.is_active);
+      reload();
+    } finally {
+      setTogglingLineId(null);
+    }
+  }
+
+  async function handleSlotToggle(slot: PaintLineSlot) {
+    setTogglingSlotId(slot.slot_id);
+    try {
+      await setPaintSlotActive(slot.slot_id, !slot.is_active);
+      reload();
+    } finally {
+      setTogglingSlotId(null);
+    }
+  }
 
   function reload() {
     getPaintLines().then((res) => {
@@ -156,6 +262,10 @@ function PaintInLines() {
       setFieldError("Paint In date is required.");
       return;
     }
+    if (!vendor) {
+      setFieldError("Select a vendor.");
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -165,6 +275,7 @@ function PaintInLines() {
         paint_in_date: formatDateForDisplay(date),
         paint_in_time: "00:00",
         remarks: remarks || undefined,
+        vendor,
       });
       setSuccess(
         `Paint In recorded for coach ${result.coach_number} on ${result.paint_line}, slot ${result.slot_number}.`,
@@ -172,6 +283,7 @@ function PaintInLines() {
       setSelectedCoachId("");
       setSelectedSlotId("");
       setDate(undefined);
+      setVendor("");
       setRemarks("");
       reload();
     } catch (err) {
@@ -223,37 +335,85 @@ function PaintInLines() {
       {lines && (
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {lines.map((line) => (
-            <div key={line.paint_line_id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-              <p className="text-sm font-semibold text-slate-800">{line.name}</p>
+            <div
+              key={line.paint_line_id}
+              className={`rounded-xl border p-3 shadow-sm ${
+                line.is_active ? "border-slate-200 bg-white" : "border-red-200 bg-red-50"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-slate-800">{line.name}</p>
+                {!line.is_active && (
+                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-medium text-red-700">
+                    Blocked
+                  </span>
+                )}
+              </div>
               <p className="text-xs text-slate-500">
                 {line.occupied_slots} / {line.total_slots} occupied
               </p>
               <div className="mt-2 grid grid-cols-5 gap-1">
-                {line.slots.map((slot) => (
-                  <button
-                    key={slot.slot_id}
-                    type="button"
-                    disabled={slot.is_occupied || !canAllocate}
-                    onClick={() => canAllocate && setSelectedSlotId(slot.slot_id)}
-                    title={
-                      slot.is_occupied
-                        ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""}`
-                        : `Slot ${slot.slot_number}`
-                    }
-                    className={`rounded py-1 text-xs font-medium ${
-                      slot.is_occupied
-                        ? "cursor-not-allowed bg-orange-100 text-orange-700"
-                        : selectedSlotId === slot.slot_id
-                          ? "bg-blue-600 text-white"
-                          : canAllocate
-                            ? "bg-green-100 text-green-800 hover:bg-green-200"
-                            : "cursor-default bg-green-100 text-green-800"
-                    }`}
-                  >
-                    {slot.slot_number}
-                  </button>
-                ))}
+                {line.slots.map((slot) => {
+                  const blockedIndividually = !slot.is_active && line.is_active;
+                  const clickableToToggle =
+                    canManage && line.is_active && !slot.is_occupied && togglingSlotId !== slot.slot_id;
+                  const clickableToSelect = canAllocate && line.is_active && slot.is_active && !slot.is_occupied;
+                  return (
+                    <button
+                      key={slot.slot_id}
+                      type="button"
+                      disabled={slot.is_occupied || (!clickableToToggle && !clickableToSelect)}
+                      onClick={() => {
+                        if (clickableToToggle) handleSlotToggle(slot);
+                        else if (clickableToSelect) setSelectedSlotId(slot.slot_id);
+                      }}
+                      title={
+                        slot.is_occupied
+                          ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""}`
+                          : blockedIndividually
+                            ? `Slot ${slot.slot_number} — Blocked${clickableToToggle ? " (click to unblock)" : ""}`
+                            : `Slot ${slot.slot_number}${clickableToToggle ? " (click to block)" : ""}`
+                      }
+                      className={`rounded py-1 text-xs font-medium ${
+                        slot.is_occupied
+                          ? "cursor-not-allowed bg-orange-100 text-orange-700"
+                          : !line.is_active
+                            ? "cursor-not-allowed bg-slate-200 text-slate-400"
+                            : blockedIndividually
+                              ? `bg-red-100 text-red-700 ${clickableToToggle ? "cursor-pointer hover:bg-red-200" : "cursor-default"}`
+                              : selectedSlotId === slot.slot_id
+                                ? "bg-blue-600 text-white"
+                                : clickableToSelect || clickableToToggle
+                                  ? "cursor-pointer bg-green-100 text-green-800 hover:bg-green-200"
+                                  : "cursor-default bg-green-100 text-green-800"
+                      }`}
+                    >
+                      {slot.slot_number}
+                    </button>
+                  );
+                })}
               </div>
+              {canManage && (
+                <button
+                  type="button"
+                  onClick={() => handleToggle(line)}
+                  disabled={togglingLineId === line.paint_line_id}
+                  className={`mt-2 w-full rounded-lg px-2 py-1 text-xs font-medium disabled:opacity-50 ${
+                    line.is_active
+                      ? "bg-red-50 text-red-700 hover:bg-red-100"
+                      : "bg-green-50 text-green-700 hover:bg-green-100"
+                  }`}
+                >
+                  {togglingLineId === line.paint_line_id
+                    ? "Updating..."
+                    : line.is_active
+                      ? "Block Line"
+                      : "Unblock Line"}
+                </button>
+              )}
+              {canManage && line.is_active && (
+                <p className="mt-1 text-center text-[10px] text-slate-400">Click a green slot to block just that slot</p>
+              )}
               {line.slots.some((s) => s.is_occupied) && (
                 <div className="mt-2 space-y-0.5 border-t border-slate-100 pt-2">
                   {line.slots
@@ -301,6 +461,21 @@ function PaintInLines() {
 
           <div className="mt-4 max-w-xs">
             <DatePickerField label="Paint In Date" value={date} onChange={setDate} />
+          </div>
+
+          <div className="mt-4 max-w-xs">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Vendor</p>
+            <select
+              value={vendor}
+              onChange={(e) => setVendor(e.target.value as VendorCode | "")}
+              className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select a vendor</option>
+              <option value="ICF">ICF</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+            </select>
           </div>
 
           <div className="mt-4">

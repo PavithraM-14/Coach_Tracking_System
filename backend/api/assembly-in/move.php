@@ -41,7 +41,7 @@ $stmt = $pdo->prepare(
      FROM assembly_in_line_slots s
      JOIN assembly_in_lines al ON al.id = s.assembly_in_line_id
      LEFT JOIN assembly_slot_occupancy aso ON aso.slot_id = s.id AND aso.released_at IS NULL
-     WHERE s.id = :slot_id AND aso.id IS NULL'
+     WHERE s.id = :slot_id AND aso.id IS NULL AND al.is_active = 1 AND s.is_active = 1'
 );
 $stmt->execute(['slot_id' => $toSlotId]);
 $toSlot = $stmt->fetch();

@@ -6,7 +6,10 @@ Auth::currentUser(); // any authenticated role may view
 
 $pdo = Db::get();
 
-$lines = $pdo->query('SELECT id, code, name, total_slots FROM paint_lines WHERE is_active = 1 ORDER BY id')->fetchAll();
+// Blocked (is_active = 0) lines are still returned — Admin/Paint Admin
+// block a line here when there's a physical problem, and the Paint In entry
+// pages need to see and grey it out rather than have it silently vanish.
+$lines = $pdo->query('SELECT id, code, name, total_slots, is_active FROM paint_lines ORDER BY id')->fetchAll();
 
 // Occupancy comes from paint_slot_occupancy (released_at IS NULL = still
 // there right now), not directly from paint_in_transactions — a coach can
@@ -14,7 +17,7 @@ $lines = $pdo->query('SELECT id, code, name, total_slots FROM paint_lines WHERE 
 // permanent paint_in_transactions row never changes, so it can't tell us
 // where a coach currently sits.
 $slotRows = $pdo->query(
-    "SELECT s.id AS slot_id, s.paint_line_id, s.slot_number,
+    "SELECT s.id AS slot_id, s.paint_line_id, s.slot_number, s.is_active,
             pso.id AS occupancy_id, pso.coach_id, c.coach_number, u.full_name AS recorded_by
      FROM paint_line_slots s
      LEFT JOIN paint_slot_occupancy pso ON pso.slot_id = s.id AND pso.released_at IS NULL
@@ -30,6 +33,7 @@ foreach ($slotRows as $row) {
         'slot_id' => (int) $row['slot_id'],
         'slot_number' => (int) $row['slot_number'],
         'is_occupied' => $row['occupancy_id'] !== null,
+        'is_active' => (bool) $row['is_active'],
         'coach_id' => $row['coach_id'] !== null ? (int) $row['coach_id'] : null,
         'coach_number' => $row['coach_number'],
         'recorded_by' => $row['recorded_by'],
@@ -46,6 +50,7 @@ $data = array_map(function ($line) use ($slotsByLine) {
         'name' => $line['name'],
         'total_slots' => (int) $line['total_slots'],
         'occupied_slots' => $occupied,
+        'is_active' => (bool) $line['is_active'],
         'slots' => $slots,
     ];
 }, $lines);

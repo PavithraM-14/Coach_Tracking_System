@@ -5,6 +5,20 @@ export function getAssemblyInLines(): Promise<{ data: AssemblyInLine[]; booked_c
   return apiRequest("/assembly-in/lines.php");
 }
 
+export function setAssemblyLineActive(lineId: number, isActive: boolean): Promise<{ line_id: number; is_active: boolean }> {
+  return apiRequest("/admin/assembly_lines_set_active.php", {
+    method: "POST",
+    body: { line_id: lineId, is_active: isActive },
+  });
+}
+
+export function setAssemblySlotActive(slotId: number, isActive: boolean): Promise<{ slot_id: number; is_active: boolean }> {
+  return apiRequest("/admin/assembly_slots_set_active.php", {
+    method: "POST",
+    body: { slot_id: slotId, is_active: isActive },
+  });
+}
+
 export function getAssemblyInList(): Promise<{ data: AssemblyInListRow[] }> {
   return apiRequest("/assembly-in/list.php");
 }

@@ -1,17 +1,13 @@
 export type RoleCode =
   | "ADMIN"
-  | "PRODUCTION_PLANNING"
   | "SHELL_PRODUCTION"
   | "FURNISHING"
   | "PAINT"
   | "ASSEMBLY_PRODUCTION"
   | "MECHANICAL_INSPECTION"
   | "ELECTRICAL_INSPECTION"
-  | "SHUNTING_STAFF"
   | "VENDOR_SNI"
-  | "FINAL_INSPECTION"
   | "OUTTURN_DISPATCH"
-  | "MANAGEMENT_VIEWER"
   | "PAINT_ADMIN"
   | "ASSEMBLY_ADMIN"
   | "ASSEMBLY_OPERATION";
@@ -39,6 +35,7 @@ export interface AdminUserRow {
   is_active: boolean;
   created_at: string;
   skills: Array<{ id: number; name: string }>;
+  assigned_vendor: string | null;
 }
 
 export type OperationCode =
@@ -144,6 +141,7 @@ export interface LocalOutturnCreateResponse {
   local_outturn_id: number;
   coach_number: string;
   local_outturn_datetime: string;
+  outturn_serial_no: string;
 }
 
 export interface LocalOutturnListRow {
@@ -153,10 +151,12 @@ export interface LocalOutturnListRow {
   local_outturn_datetime: string;
   recorded_by: string;
   status: string;
+  outturn_serial_no: string | null;
 }
 
 export interface LockSealWorklistCoach extends WorklistCoach {
   local_outturn_datetime: string;
+  outturn_serial_no: string | null;
 }
 
 export interface LockSealCreateResponse {
@@ -172,10 +172,12 @@ export interface LockSealListRow {
   lock_seal_datetime: string;
   recorded_by: string;
   status: string;
+  outturn_serial_no: string | null;
 }
 
 export interface BoardOutturnWorklistCoach extends WorklistCoach {
   lock_seal_datetime: string;
+  outturn_serial_no: string | null;
 }
 
 export interface BoardOutturnCreateResponse {
@@ -191,10 +193,12 @@ export interface BoardOutturnListRow {
   board_outturn_datetime: string;
   recorded_by: string;
   status: string;
+  outturn_serial_no: string | null;
 }
 
 export interface PhysicalDispatchWorklistCoach extends WorklistCoach {
   board_outturn_datetime: string;
+  outturn_serial_no: string | null;
 }
 
 export interface PhysicalDispatchCreateResponse {
@@ -210,12 +214,14 @@ export interface PhysicalDispatchListRow {
   dispatch_datetime: string;
   recorded_by: string;
   status: string;
+  outturn_serial_no: string | null;
 }
 
 export interface PaintLineSlot {
   slot_id: number;
   slot_number: number;
   is_occupied: boolean;
+  is_active: boolean;
   coach_id: number | null;
   coach_number: string | null;
   recorded_by: string | null;
@@ -227,6 +233,7 @@ export interface PaintLine {
   name: string;
   total_slots: number;
   occupied_slots: number;
+  is_active: boolean;
   slots: PaintLineSlot[];
 }
 
@@ -236,6 +243,7 @@ export interface PaintInCreateResponse {
   paint_line: string;
   slot_number: number;
   paint_in_datetime: string;
+  vendor: string;
 }
 
 export interface PaintInListRow {
@@ -290,6 +298,7 @@ export interface PaintRecordRow {
   coach_type: string;
   paint_in_datetime: string;
   paint_in_by: string;
+  vendor: string | null;
   paint_out_datetime: string | null;
   paint_out_by: string | null;
   current_line: string | null;
@@ -301,6 +310,7 @@ export interface AssemblyInLineSlot {
   slot_id: number;
   slot_number: number;
   is_occupied: boolean;
+  is_active: boolean;
   coach_id: number | null;
   coach_number: string | null;
   recorded_by: string | null;
@@ -312,6 +322,7 @@ export interface AssemblyInLine {
   name: string;
   total_slots: number;
   occupied_slots: number;
+  is_active: boolean;
   slots: AssemblyInLineSlot[];
 }
 
@@ -591,4 +602,15 @@ export interface AssemblyOperationCompletionRow {
   operation_id: number;
   display_name: string;
   completed_at: string;
+}
+
+// A coach painted under this VENDOR_SNI login's assigned vendor (vendor/coaches.php).
+export interface VendorCoachRow {
+  paint_in_id: number;
+  coach_number: string;
+  coach_type: string;
+  paint_in_datetime: string;
+  paint_in_by: string;
+  paint_out_datetime: string | null;
+  status: string;
 }

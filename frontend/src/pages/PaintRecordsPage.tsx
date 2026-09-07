@@ -72,6 +72,7 @@ export function PaintRecordsPage() {
               <tr>
                 <th className="px-4 py-2">Coach No.</th>
                 <th className="px-4 py-2">Coach Type</th>
+                <th className="px-4 py-2">Vendor</th>
                 <th className="px-4 py-2">Paint In</th>
                 <th className="px-4 py-2">Current / Last Slot</th>
                 <th className="px-4 py-2">Paint Out</th>
@@ -87,6 +88,7 @@ export function PaintRecordsPage() {
                     <tr>
                       <td className="px-4 py-2 font-medium text-slate-800">{row.coach_number}</td>
                       <td className="px-4 py-2">{row.coach_type}</td>
+                      <td className="px-4 py-2">{row.vendor ?? "—"}</td>
                       <td className="px-4 py-2">
                         {formatDateOnly(row.paint_in_datetime)}
                         <p className="text-xs text-slate-400">by {row.paint_in_by}</p>
@@ -128,7 +130,7 @@ export function PaintRecordsPage() {
                     </tr>
                     {expandedId === row.paint_in_id && (
                       <tr>
-                        <td colSpan={7} className="bg-slate-50 px-4 py-3">
+                        <td colSpan={8} className="bg-slate-50 px-4 py-3">
                           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
                             Full slot history
                           </p>

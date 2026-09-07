@@ -44,6 +44,7 @@ import { LocalOutturnStagesPage } from "./pages/LocalOutturnStagesPage";
 import { LockSealStagesPage } from "./pages/LockSealStagesPage";
 import { BoardOutturnStagesPage } from "./pages/BoardOutturnStagesPage";
 import { PhysicalDispatchStagesPage } from "./pages/PhysicalDispatchStagesPage";
+import { VendorCoachesPage } from "./pages/VendorCoachesPage";
 import { getFurnishingInWorklist } from "./api/furnishingIn";
 import { getPaintInWorklist } from "./api/paintIn";
 import { getPaintOutWorklist } from "./api/paintOut";
@@ -487,6 +488,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH", "ADMIN"]}>
                         <PhysicalDispatchStagesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/vendor/coaches"
+                    element={
+                      <ProtectedRoute allowedRoles={["VENDOR_SNI"]}>
+                        <VendorCoachesPage />
                       </ProtectedRoute>
                     }
                   />

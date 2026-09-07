@@ -127,6 +127,7 @@ export function PhysicalDispatchPage() {
           <FieldReadOnly label="Plant" value={selectedCoach.plant} />
           <FieldReadOnly label="Production Year" value={selectedCoach.production_year} />
           <FieldReadOnly label="Board Outturn Date" value={formatDateForDisplay(toLocalDate(selectedCoach.board_outturn_datetime))} />
+          <FieldReadOnly label="Outturn Serial No." value={selectedCoach.outturn_serial_no ?? "—"} />
         </div>
       )}
 

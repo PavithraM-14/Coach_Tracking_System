@@ -23,6 +23,8 @@ CREATE TABLE users (
   password_hash VARCHAR(255) NOT NULL,
   role_id INT NOT NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1,
+  assigned_vendor VARCHAR(10) NULL,        -- 'ICF'/'A'/'B'/'C' — only meaningful for role VENDOR_SNI,
+                                            -- scoping that login to one vendor's coaches (see vendor/coaches.php)
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (role_id) REFERENCES roles(id)
@@ -117,6 +119,7 @@ CREATE TABLE paint_line_slots (
   id INT AUTO_INCREMENT PRIMARY KEY,
   paint_line_id INT NOT NULL,
   slot_number INT NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1, -- individual slot can be blocked even while its line stays open
   UNIQUE KEY uq_line_slot (paint_line_id, slot_number),
   FOREIGN KEY (paint_line_id) REFERENCES paint_lines(id)
 );
@@ -155,6 +158,7 @@ CREATE TABLE assembly_in_line_slots (
   id INT AUTO_INCREMENT PRIMARY KEY,
   assembly_in_line_id INT NOT NULL,
   slot_number INT NOT NULL,
+  is_active TINYINT(1) NOT NULL DEFAULT 1, -- individual slot can be blocked even while its line stays open
   UNIQUE KEY uq_line_slot (assembly_in_line_id, slot_number),
   FOREIGN KEY (assembly_in_line_id) REFERENCES assembly_in_lines(id)
 );
@@ -253,6 +257,8 @@ CREATE TABLE paint_in_transactions (
   remarks VARCHAR(255) NULL,
   recorded_by_user_id INT NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'IN_PROGRESS',
+  vendor VARCHAR(10) NULL, -- 'ICF'/'A'/'B'/'C' — which vendor did this coach's paint work; NULL only
+                           -- for rows recorded before this field existed, required going forward
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (coach_id) REFERENCES coaches(id),
   FOREIGN KEY (furnishing_in_id) REFERENCES furnishing_in_records(id),
@@ -437,6 +443,10 @@ CREATE TABLE local_outturn_records (
   remarks VARCHAR(255) NULL,
   recorded_by_user_id INT NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
+  outturn_serial_no VARCHAR(30) NULL, -- dispatch/outturn tracking number entered here, distinct
+                                       -- from coaches.serial_no (manufacturing) — carried through
+                                       -- Lock & Seal / Board Outturn / Physical Dispatch via a direct
+                                       -- coach_id join (see those stages' worklist.php/list.php)
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (coach_id) REFERENCES coaches(id),
   FOREIGN KEY (assembly_out_id) REFERENCES assembly_out_transactions(id),

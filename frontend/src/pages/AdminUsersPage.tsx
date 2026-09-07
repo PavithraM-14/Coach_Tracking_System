@@ -1,5 +1,7 @@
-import { Fragment, useEffect, useState, type FormEvent } from "react";
+import { Fragment, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import { Workbook } from "exceljs";
 import {
+  bulkCreateUsers,
   createUser,
   deleteUser,
   getRoles,
@@ -8,8 +10,10 @@ import {
   updateUserSkills,
   createSkill,
   getAdminLookups,
+  type BulkCreateUserRow,
+  type BulkCreateUsersResponse,
 } from "../api/admin";
-import type { AdminLookups, AdminUserRow, OperationCode, RoleOption, Skill } from "../types";
+import type { AdminLookups, AdminUserRow, OperationCode, RoleCode, RoleOption, Skill } from "../types";
 import { ApiError } from "../api/client";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { useAuth } from "../context/AuthContext";
@@ -23,13 +27,13 @@ import { useAuth } from "../context/AuthContext";
 // Assembly Operations (see database/seed.sql), split by department across
 // these three roles — not a coach-category capability — reusing this
 // mechanism instead of a bespoke assignment table, per Assembly Admin's request.
-const SKILL_ROLE_CODES = [
+const SKILL_ROLE_CODES: RoleCode[] = [
   "FURNISHING",
   "OUTTURN_DISPATCH",
   "ASSEMBLY_OPERATION",
   "MECHANICAL_INSPECTION",
   "ELECTRICAL_INSPECTION",
-] as const;
+];
 
 // Mirrors backend/lib/Operations.php — a skill is "can perform this operation
 // on this coach category", not just a role/category tag.
@@ -235,6 +239,182 @@ function SkillEditor({ user, skills, onSaved }: { user: AdminUserRow; skills: Sk
   );
 }
 
+// Every bulk-created user gets this same password (a spreadsheet can't
+// realistically carry a unique secure password per row) — shown in the
+// upload UI so the admin can tell staff what to log in with.
+const BULK_DEFAULT_PASSWORD = "Welcome@123";
+const BULK_TEMPLATE_HEADERS = ["Employee No.", "Full Name", "Username", "Email", "Role", "Assigned Vendor"];
+
+function normalizeHeader(h: string): string {
+  return h.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+const HEADER_FIELD_MAP: Record<string, keyof BulkCreateUserRow> = {
+  employeeno: "employee_no",
+  fullname: "full_name",
+  username: "username",
+  email: "email",
+  role: "role",
+  assignedvendor: "assigned_vendor",
+  vendor: "assigned_vendor",
+};
+
+// Sits alongside the single-user form above — same Create User endpoint's
+// rules apply per row (see users_bulk_create.php), just parsed from a
+// spreadsheet instead of typed into the form. Skills aren't supported here
+// (they're a checkbox grid, not a spreadsheet-friendly value) — a bulk-
+// created worker gets their role only; skills are added afterward via the
+// existing "Edit Skills" button per-user, same as any other user.
+function BulkUserUpload({ roles, onCreated }: { roles: RoleOption[] | null; onCreated: () => void }) {
+  const [fileName, setFileName] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<BulkCreateUsersResponse | null>(null);
+
+  async function handleDownloadTemplate() {
+    const wb = new Workbook();
+    const sheet = wb.addWorksheet("Users");
+    sheet.addRow(BULK_TEMPLATE_HEADERS);
+    sheet.addRow(["E2100", "Jane Doe", "janed", "", roles?.[0]?.code ?? "", ""]);
+
+    if (roles && roles.length > 0) {
+      const refSheet = wb.addWorksheet("Valid values");
+      refSheet.addRow(["Valid Role values (code or name both work)"]);
+      roles.forEach((r) => refSheet.addRow([`${r.code} (${r.name})`]));
+      refSheet.addRow([]);
+      refSheet.addRow(["Valid Assigned Vendor values (Vendor / SNI User role only)"]);
+      ["ICF", "A", "B", "C"].forEach((v) => refSheet.addRow([v]));
+    }
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "bulk_users_template.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setError(null);
+    setResult(null);
+    setFileName(file.name);
+    setUploading(true);
+    try {
+      const buffer = await file.arrayBuffer();
+      const wb = new Workbook();
+      await wb.xlsx.load(buffer);
+      const sheet = wb.worksheets[0];
+      if (!sheet) {
+        setError("The file has no worksheet.");
+        return;
+      }
+
+      const fieldByColumn: Record<number, keyof BulkCreateUserRow> = {};
+      sheet.getRow(1).eachCell((cell, colNumber) => {
+        const field = HEADER_FIELD_MAP[normalizeHeader(String(cell.value ?? ""))];
+        if (field) fieldByColumn[colNumber] = field;
+      });
+
+      if (Object.keys(fieldByColumn).length === 0) {
+        setError("Couldn't recognize any columns — check the header row matches the template.");
+        return;
+      }
+
+      const rows: BulkCreateUserRow[] = [];
+      sheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+        const parsed: BulkCreateUserRow = {
+          employee_no: "",
+          full_name: "",
+          username: "",
+          email: "",
+          role: "",
+          assigned_vendor: "",
+        };
+        row.eachCell((cell, colNumber) => {
+          const field = fieldByColumn[colNumber];
+          if (field) parsed[field] = String(cell.value ?? "").trim();
+        });
+        rows.push(parsed);
+      });
+
+      if (rows.length === 0) {
+        setError("No data rows found in the file.");
+        return;
+      }
+
+      const res = await bulkCreateUsers(rows);
+      setResult(res);
+      if (res.created_count > 0) onCreated();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Failed to process the file.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 max-w-2xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-800">Bulk create via Excel</h3>
+      <p className="mt-1 text-xs text-slate-500">
+        Columns: <code className="rounded bg-slate-100 px-1">Employee No.</code>,{" "}
+        <code className="rounded bg-slate-100 px-1">Full Name</code>,{" "}
+        <code className="rounded bg-slate-100 px-1">Username</code>,{" "}
+        <code className="rounded bg-slate-100 px-1">Email</code>,{" "}
+        <code className="rounded bg-slate-100 px-1">Role</code>,{" "}
+        <code className="rounded bg-slate-100 px-1">Assigned Vendor</code>. Rows missing a required
+        field are skipped. Default password{" "}
+        <code className="rounded bg-slate-100 px-1">{BULK_DEFAULT_PASSWORD}</code>.
+      </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <label className="cursor-pointer rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+          {uploading ? "Processing..." : "Choose .xlsx file"}
+          <input type="file" accept=".xlsx" onChange={handleFileChange} disabled={uploading} className="hidden" />
+        </label>
+        <button
+          type="button"
+          onClick={handleDownloadTemplate}
+          className="text-xs font-medium text-blue-600 hover:underline"
+        >
+          Download template
+        </button>
+        {fileName && <span className="text-xs text-slate-400">{fileName}</span>}
+      </div>
+
+      {error && (
+        <div className="mt-3">
+          <ValidationMessage kind="error" message={error} />
+        </div>
+      )}
+
+      {result && (
+        <div className="mt-3 space-y-2">
+          <ValidationMessage
+            kind={result.created_count > 0 ? "success" : "error"}
+            message={`${result.created_count} user${result.created_count === 1 ? "" : "s"} created. ${result.skipped_count} row${result.skipped_count === 1 ? "" : "s"} skipped.`}
+          />
+          {result.skipped.length > 0 && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-2 text-xs text-amber-800">
+              {result.skipped.map((s, i) => (
+                <p key={i}>
+                  Row {s.row + 2}: {s.reason}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Paint Admin / Assembly Admin manage exactly one worker role each — the
 // role dropdown always comes back from the backend with just that single
 // option, so it's auto-selected and shown as a fixed label instead of a
@@ -270,6 +450,7 @@ export function AdminUsersPage() {
     role_id: "",
   });
   const [newUserSkillIds, setNewUserSkillIds] = useState<number[]>([]);
+  const [newUserVendor, setNewUserVendor] = useState("");
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<number | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<number | null>(null);
@@ -328,10 +509,12 @@ export function AdminUsersPage() {
         password: form.password,
         role_id: Number(form.role_id),
         skill_ids: newUserSkillIds,
+        assigned_vendor: newUserVendor || undefined,
       });
       setSuccess(`User "${form.username}" created.`);
       setForm({ employee_no: "", full_name: "", username: "", email: "", password: "", role_id: "" });
       setNewUserSkillIds([]);
+      setNewUserVendor("");
       reload();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Failed to create user.");
@@ -481,6 +664,23 @@ export function AdminUsersPage() {
           )}
         </div>
 
+        {selectedRoleCode === "VENDOR_SNI" && (
+          <div className="col-span-2">
+            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Assigned Vendor</label>
+            <select
+              value={newUserVendor}
+              onChange={(e) => setNewUserVendor(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">Unassigned (sees no coaches yet)</option>
+              <option value="ICF">ICF</option>
+              <option value="A">A</option>
+              <option value="B">B</option>
+              <option value="C">C</option>
+            </select>
+          </div>
+        )}
+
         {error && (
           <div className="col-span-2">
             <ValidationMessage kind="error" message={error} />
@@ -500,6 +700,8 @@ export function AdminUsersPage() {
           {submitting ? "Creating..." : "Create User"}
         </button>
       </form>
+
+      <BulkUserUpload roles={roles} onCreated={reload} />
 
       {skills && !isScopedAdmin && <SkillMasterSection skills={skills} onSkillsChanged={reload} />}
 
@@ -528,7 +730,11 @@ export function AdminUsersPage() {
                     <td className="px-4 py-2">{u.email ?? "—"}</td>
                     <td className="px-4 py-2">{u.role}</td>
                     <td className="px-4 py-2">
-                      {u.skills.length > 0 ? u.skills.map((s) => s.name).join(", ") : "—"}
+                      {u.role === "VENDOR_SNI"
+                        ? (u.assigned_vendor ?? "Unassigned")
+                        : u.skills.length > 0
+                          ? u.skills.map((s) => s.name).join(", ")
+                          : "—"}
                     </td>
                     <td className="px-4 py-2">{u.is_active ? "Yes" : "No"}</td>
                     <td className="px-4 py-2 text-right">

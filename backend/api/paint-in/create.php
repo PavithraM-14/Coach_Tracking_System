@@ -15,9 +15,13 @@ $slotId = (int) ($body['slot_id'] ?? 0);
 $paintInDate = trim($body['paint_in_date'] ?? '');
 $paintInTime = trim($body['paint_in_time'] ?? '');
 $remarks = isset($body['remarks']) ? trim((string) $body['remarks']) : null;
+$vendor = trim($body['vendor'] ?? '');
 
 if ($coachId <= 0 || $slotId <= 0) {
     Response::error('coach_id and slot_id are required.', 400);
+}
+if (!in_array($vendor, ['ICF', 'A', 'B', 'C'], true)) {
+    Response::error('vendor is required and must be one of ICF, A, B, C.', 400);
 }
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $paintInDate)) {
     Response::error('paint_in_date is required in YYYY-MM-DD format.', 400);
@@ -54,7 +58,7 @@ $stmt = $pdo->prepare(
      FROM paint_line_slots s
      JOIN paint_lines pl ON pl.id = s.paint_line_id
      LEFT JOIN paint_slot_occupancy pso ON pso.slot_id = s.id AND pso.released_at IS NULL
-     WHERE s.id = :slot_id AND pso.id IS NULL'
+     WHERE s.id = :slot_id AND pso.id IS NULL AND pl.is_active = 1 AND s.is_active = 1'
 );
 $stmt->execute(['slot_id' => $slotId]);
 $slot = $stmt->fetch();
@@ -75,8 +79,8 @@ $pdo->beginTransaction();
 try {
     $stmt = $pdo->prepare(
         'INSERT INTO paint_in_transactions
-            (coach_id, furnishing_in_id, paint_line_id, slot_id, paint_in_datetime, remarks, recorded_by_user_id)
-         VALUES (:coach_id, :furnishing_in_id, :paint_line_id, :slot_id, :paint_in_datetime, :remarks, :recorded_by_user_id)'
+            (coach_id, furnishing_in_id, paint_line_id, slot_id, paint_in_datetime, remarks, recorded_by_user_id, vendor)
+         VALUES (:coach_id, :furnishing_in_id, :paint_line_id, :slot_id, :paint_in_datetime, :remarks, :recorded_by_user_id, :vendor)'
     );
     $stmt->execute([
         'coach_id' => $coachId,
@@ -86,6 +90,7 @@ try {
         'paint_in_datetime' => $paintInDatetime,
         'remarks' => $remarks,
         'recorded_by_user_id' => $currentUser['sub'],
+        'vendor' => $vendor,
     ]);
     $paintInId = (int) $pdo->lastInsertId();
 
@@ -129,4 +134,5 @@ Response::ok([
     'paint_line' => $slot['paint_line_name'],
     'slot_number' => (int) $slot['slot_number'],
     'paint_in_datetime' => $paintInDatetime,
+    'vendor' => $vendor,
 ], 201);

@@ -11,27 +11,21 @@ USE cts_dev;
 
 -- ===================== Roles =====================
 -- Full role list per the functional doc's User & Responsibility Model (section 3).
--- Every role gets its own login. Only ADMIN, SHELL_PRODUCTION, FURNISHING and
--- PAINT have working pages in this phase — the rest are seeded now (login-only)
--- so accounts exist ahead of their modules being built, per the user's request
--- for a separate login per role. Coach-type/skill/operation-level filtering
--- (User -> Role -> Coach Type -> Skill -> Operation/Stage) is intentionally
--- NOT implemented yet — role-level access only, as agreed.
+-- PRODUCTION_PLANNING, SHUNTING_STAFF, FINAL_INSPECTION and MANAGEMENT_VIEWER
+-- were seeded login-only in an earlier phase and later removed once confirmed
+-- nothing in the app referenced them (no nav items, routes, or dashboard
+-- branches) — see git history if one of them needs reviving.
 
 INSERT INTO roles (id, code, name, description) VALUES
 (1,  'ADMIN',                 'Admin',                        'System configuration and governance'),
-(2,  'PRODUCTION_PLANNING',   'Production Planning',          'Imports/verifies SAP/BO plan and coach master data'),
 (3,  'SHELL_PRODUCTION',      'Shell Production',             'Updates Shell production and records Shell Outturn'),
 (4,  'FURNISHING',            'Furnishing',                   'Views released coaches and performs furnishing transactions'),
 (5,  'PAINT',                 'Paint',                        'Paint In / Paint Out and line handling'),
 (6,  'ASSEMBLY_PRODUCTION',   'Assembly Production',          'Performs Assembly In and marks assigned operations completed'),
 (7,  'MECHANICAL_INSPECTION', 'Mechanical Inspection',        'Completes assigned mechanical inspection/clearance operations'),
 (8,  'ELECTRICAL_INSPECTION', 'Electrical Inspection',        'Completes assigned electrical inspection/clearance operations'),
-(9,  'SHUNTING_STAFF',        'Shunting Staff',               'Records authorized coach movement between lines/locations'),
-(10, 'VENDOR_SNI',            'Vendor / SNI User',            'Updates only assigned vendor/SNI operations'),
-(11, 'FINAL_INSPECTION',      'Final Inspection / Clearance', 'Completes required final checks and supports Assembly Out readiness'),
+(10, 'VENDOR_SNI',            'Vendor / SNI User',            'Records/views coaches for one assigned paint vendor (ICF/A/B/C)'),
 (12, 'OUTTURN_DISPATCH',      'Outturn / Dispatch',           'Local Outturn, Lock & Seal, Board Outturn and Dispatch'),
-(13, 'MANAGEMENT_VIEWER',     'Management / Viewer',          'Read-only dashboards and reports unless separately authorized'),
 -- Scoped sub-admins: Admin no longer creates PAINT/ASSEMBLY_PRODUCTION
 -- workers directly — that's delegated to these two roles, each restricted
 -- to their own shop's worker logins and assignment matrix.
@@ -47,18 +41,14 @@ INSERT INTO roles (id, code, name, description) VALUES
 
 INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id) VALUES
 (1,  'E1001', 'A. Sundaram',    'admin1',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 1),
-(2,  'E1002', 'V. Elango',      'planning1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 2),
 (3,  'E1003', 'R. Meena',       'shell1',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 3),
 (4,  'E1004', 'K. Priya',       'furnish1',    '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 4),
 (5,  'E1005', 'S. Ramesh',      'paint1',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 5),
 (6,  'E1006', 'M. Kumar',       'assemble1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 6),
 (7,  'E1007', 'D. Suresh',      'mechinsp1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 7),
 (8,  'E1008', 'N. Bala',        'elecinsp1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 8),
-(9,  'E1009', 'P. Anbu',        'shunt1',      '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 9),
 (10, 'E1010', 'J. Vendor',      'vendor1',     '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 10),
-(11, 'E1011', 'T. Karthik',     'finalinsp1',  '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 11),
 (12, 'E1012', 'G. Vijay',       'dispatch1',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12),
-(13, 'E1013', 'L. Manager',     'viewer1',     '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 13),
 -- A second Paint employee so the skill-based assignment queue (capped at 5
 -- concurrent per employee) has more than one candidate to load-balance
 -- across. Furnishing is deliberately single-employee (furnish1 only) — that
@@ -78,6 +68,16 @@ INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id)
 -- IDs deliberately out past the imported real rosters (20-81) below.
 (82, 'E1082', 'P. Anand',       'paintadmin1',    '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 14),
 (83, 'E1083', 'A. Bhavani',     'assemblyadmin1', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 15);
+
+-- One login per paint vendor (role VENDOR_SNI), each scoped via
+-- assigned_vendor to see only its own coaches (see vendor/coaches.php) — ICF
+-- represents in-house work, A/B/C are placeholder external vendor codes.
+-- The original unscoped vendor1 (id 10, role-level access only) is left as-is.
+INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id, assigned_vendor) VALUES
+(84, 'E1084', 'ICF Vendor Desk', 'vendor_icf', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 10, 'ICF'),
+(85, 'E1085', 'Vendor A Desk',   'vendor_a',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 10, 'A'),
+(86, 'E1086', 'Vendor B Desk',   'vendor_b',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 10, 'B'),
+(87, 'E1087', 'Vendor C Desk',   'vendor_c',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 10, 'C');
 
 -- Real Assembly Shop supervisors (Sr.Sec.Engr grade), sourced from the
 -- factory's cug employee directory: payunit '30A' (Assembly/Fur.) with

@@ -5,6 +5,20 @@ export function getPaintLines(): Promise<{ data: PaintLine[]; booked_count: numb
   return apiRequest("/paint-in/lines.php");
 }
 
+export function setPaintLineActive(lineId: number, isActive: boolean): Promise<{ line_id: number; is_active: boolean }> {
+  return apiRequest("/admin/paint_lines_set_active.php", {
+    method: "POST",
+    body: { line_id: lineId, is_active: isActive },
+  });
+}
+
+export function setPaintSlotActive(slotId: number, isActive: boolean): Promise<{ slot_id: number; is_active: boolean }> {
+  return apiRequest("/admin/paint_slots_set_active.php", {
+    method: "POST",
+    body: { slot_id: slotId, is_active: isActive },
+  });
+}
+
 export function getPaintInList(): Promise<{ data: PaintInListRow[] }> {
   return apiRequest("/paint-in/list.php");
 }
@@ -13,12 +27,15 @@ export function getPaintInWorklist(): Promise<{ data: WorklistCoach[] }> {
   return apiRequest("/paint-in/worklist.php");
 }
 
+export type VendorCode = "ICF" | "A" | "B" | "C";
+
 export interface PaintInCreateInput {
   coach_id: number;
   slot_id: number;
   paint_in_date: string; // YYYY-MM-DD
   paint_in_time: string; // HH:MM
   remarks?: string;
+  vendor: VendorCode;
 }
 
 export function createPaintIn(input: PaintInCreateInput): Promise<PaintInCreateResponse> {

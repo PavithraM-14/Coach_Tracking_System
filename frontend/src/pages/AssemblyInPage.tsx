@@ -114,7 +114,7 @@ export function AssemblyInPage() {
   );
 
   const selectedCoach = coaches?.find((c) => c.coach_id === selectedCoachId);
-  const availableSlotsInSelectedLine =
+  const slotsInSelectedLine =
     lines?.find((l) => l.assembly_in_line_id === selectedLineId)?.slots.filter((s) => !s.is_occupied) ?? [];
 
   return (
@@ -175,8 +175,12 @@ export function AssemblyInPage() {
             {lines?.map((line) => {
               const available = line.slots.filter((s) => !s.is_occupied).length;
               return (
-                <option key={line.assembly_in_line_id} value={line.assembly_in_line_id} disabled={available === 0}>
-                  {line.name} ({available} available)
+                <option
+                  key={line.assembly_in_line_id}
+                  value={line.assembly_in_line_id}
+                  disabled={!line.is_active || available === 0}
+                >
+                  {line.name} ({line.is_active ? `${available} available` : "Blocked"})
                 </option>
               );
             })}
@@ -191,9 +195,9 @@ export function AssemblyInPage() {
             className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
             <option value="">{selectedLineId ? "Select a slot" : "Select a line first"}</option>
-            {availableSlotsInSelectedLine.map((slot) => (
-              <option key={slot.slot_id} value={slot.slot_id}>
-                Slot {slot.slot_number}
+            {slotsInSelectedLine.map((slot) => (
+              <option key={slot.slot_id} value={slot.slot_id} disabled={!slot.is_active}>
+                Slot {slot.slot_number}{!slot.is_active ? " (Blocked)" : ""}
               </option>
             ))}
           </select>
