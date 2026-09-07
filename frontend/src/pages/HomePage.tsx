@@ -221,12 +221,16 @@ function FurnishingStats() {
   const [total, setTotal] = useState<number | null>(null);
   const [recordedToday, setRecordedToday] = useState<number | null>(null);
   const [pending, setPending] = useState<number | null>(null);
+  const [stillAtFurnishing, setStillAtFurnishing] = useState<number | null>(null);
+  const [movedToPaintIn, setMovedToPaintIn] = useState<number | null>(null);
 
   useEffect(() => {
     getFurnishingInList().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
       setTotal(res.data.length);
       setRecordedToday(res.data.filter((r) => r.furnishing_in_datetime.slice(0, 10) === todayStr).length);
+      setStillAtFurnishing(res.data.filter((r) => r.status === "FURNISHING_IN").length);
+      setMovedToPaintIn(res.data.filter((r) => r.status === "PAINT_IN").length);
     });
     getFurnishingInWorklist().then((res) => setPending(res.data.length));
   }, []);
@@ -262,7 +266,11 @@ function FurnishingStats() {
         color="blue"
         label="Total Furnishing In Records"
         value={total ?? "…"}
-        description="All Furnishing In records logged in the system"
+        description={
+          stillAtFurnishing === null || movedToPaintIn === null
+            ? "By current stage"
+            : `${stillAtFurnishing} still at Furnishing In · ${movedToPaintIn} moved to Paint In`
+        }
         to="/furnishing-in/history"
       />
     </StatGrid>
