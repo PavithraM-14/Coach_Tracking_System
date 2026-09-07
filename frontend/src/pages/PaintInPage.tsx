@@ -91,12 +91,12 @@ export function PaintInPage() {
     setMovingCoach({ coachId: slot.coach_id, coachNumber: slot.coach_number });
   }
 
-  async function completeMove(toSlotId: number) {
-    if (!movingCoach) return;
+  async function handleConfirmMove() {
+    if (!movingCoach || !selectedSlotId) return;
     setMoveError(null);
     setMoving(true);
     try {
-      await movePaintCoach({ coach_id: movingCoach.coachId, to_slot_id: toSlotId });
+      await movePaintCoach({ coach_id: movingCoach.coachId, to_slot_id: selectedSlotId });
       setMovingCoach(null);
       setSelectedLineId("");
       setSelectedSlotId("");
@@ -106,14 +106,6 @@ export function PaintInPage() {
     } finally {
       setMoving(false);
     }
-  }
-
-  function handleSlotSelect(value: number | "") {
-    if (movingCoach) {
-      if (value) completeMove(value);
-      return;
-    }
-    setSelectedSlotId(value);
   }
 
   const occupiedSlots = (lines ?? []).flatMap((line) =>
@@ -132,8 +124,8 @@ export function PaintInPage() {
       <p className="mt-1 text-sm text-slate-500">
         Each paint line has a maximum capacity of 10 coaches. Coaches are auto-assigned to you (up
         to 5 at a time) once Furnishing In is recorded — use the Line/Slot dropdowns below to pick a
-        spot. Need to free up a slot? Tap "Move" next to the occupied coach, then pick a destination
-        line/slot above.
+        spot. Need to free up a slot? Tap "Move" next to the occupied coach, pick a destination
+        line/slot above, then tap "Move Coach" to confirm.
       </p>
 
       <Link
@@ -156,7 +148,7 @@ export function PaintInPage() {
         <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
           <span>
             Moving coach <span className="font-semibold">{movingCoach.coachNumber}</span> — pick a destination
-            line/slot below{moving && "…"}
+            line/slot below, then tap "Move Coach"{moving && "…"}
           </span>
           <button
             type="button"
@@ -195,7 +187,7 @@ export function PaintInPage() {
           <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Slot</label>
           <select
             value={selectedSlotId}
-            onChange={(e) => handleSlotSelect(e.target.value ? Number(e.target.value) : "")}
+            onChange={(e) => setSelectedSlotId(e.target.value ? Number(e.target.value) : "")}
             disabled={!selectedLineId}
             className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400"
           >
@@ -208,6 +200,17 @@ export function PaintInPage() {
           </select>
         </div>
       </div>
+
+      {movingCoach && (
+        <button
+          type="button"
+          onClick={handleConfirmMove}
+          disabled={!selectedSlotId || moving}
+          className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+        >
+          {moving ? "Moving..." : "Move Coach"}
+        </button>
+      )}
 
       {occupiedSlots.length > 0 && (
         <div className="mt-4 max-w-xl overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
