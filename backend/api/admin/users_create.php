@@ -4,7 +4,7 @@ require_once __DIR__ . '/../../bootstrap.php';
 require_once __DIR__ . '/../../lib/Assignment.php';
 require_once __DIR__ . '/../../lib/Operations.php';
 
-Auth::requireRole(['ADMIN']);
+$currentUser = Auth::requireRole(['ADMIN', 'PAINT_ADMIN', 'ASSEMBLY_ADMIN']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Method not allowed.', 405);
@@ -30,6 +30,32 @@ if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
 }
 
 $pdo = Db::get();
+
+$roleCodeStmt = $pdo->prepare('SELECT code FROM roles WHERE id = :id');
+$roleCodeStmt->execute(['id' => $roleId]);
+$targetRoleCode = $roleCodeStmt->fetchColumn();
+if ($targetRoleCode === false) {
+    Response::error('Selected role does not exist.', 400);
+}
+
+// Paint Admin / Assembly Admin may only create logins for their own shop's
+// workers. Admin creates every other role (including Paint Admin/Assembly
+// Admin themselves) but no longer PAINT/ASSEMBLY_PRODUCTION directly — that
+// now belongs to their respective scoped admin.
+if ($currentUser['role'] === 'PAINT_ADMIN') {
+    if ($targetRoleCode !== 'PAINT') {
+        Response::error('Paint Admin can only create Paint worker logins.', 403);
+    }
+} elseif ($currentUser['role'] === 'ASSEMBLY_ADMIN') {
+    if ($targetRoleCode !== 'ASSEMBLY_PRODUCTION') {
+        Response::error('Assembly Admin can only create Assembly worker logins.', 403);
+    }
+} elseif (in_array($targetRoleCode, ['PAINT', 'ASSEMBLY_PRODUCTION'], true)) {
+    Response::error(
+        'Admin no longer creates Paint/Assembly worker logins directly — create a Paint Admin or Assembly Admin login instead, who can then add workers.',
+        403
+    );
+}
 
 $dupConditions = ['username = :username', 'employee_no = :employee_no'];
 $dupParams = ['username' => $username, 'employee_no' => $employeeNo];

@@ -11,7 +11,9 @@ export type RoleCode =
   | "VENDOR_SNI"
   | "FINAL_INSPECTION"
   | "OUTTURN_DISPATCH"
-  | "MANAGEMENT_VIEWER";
+  | "MANAGEMENT_VIEWER"
+  | "PAINT_ADMIN"
+  | "ASSEMBLY_ADMIN";
 
 export interface CurrentUser {
   id: number;

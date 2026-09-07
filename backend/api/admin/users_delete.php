@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-$currentUser = Auth::requireRole(['ADMIN']);
+$currentUser = Auth::requireRole(['ADMIN', 'PAINT_ADMIN', 'ASSEMBLY_ADMIN']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Method not allowed.', 405);
@@ -19,11 +19,22 @@ if ($userId === (int) $currentUser['sub']) {
 }
 
 $pdo = Db::get();
-$stmt = $pdo->prepare('SELECT id, username FROM users WHERE id = :id');
+$stmt = $pdo->prepare(
+    'SELECT u.id, u.username, r.code AS role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = :id'
+);
 $stmt->execute(['id' => $userId]);
 $user = $stmt->fetch();
 if (!$user) {
     Response::error('User not found.', 404);
+}
+
+// Paint Admin / Assembly Admin may only remove logins for their own shop's
+// workers, never any other account.
+if ($currentUser['role'] === 'PAINT_ADMIN' && $user['role'] !== 'PAINT') {
+    Response::error('Paint Admin can only remove Paint worker logins.', 403);
+}
+if ($currentUser['role'] === 'ASSEMBLY_ADMIN' && $user['role'] !== 'ASSEMBLY_PRODUCTION') {
+    Response::error('Assembly Admin can only remove Assembly worker logins.', 403);
 }
 
 // A user who has recorded any transaction is never hard-deleted — that would

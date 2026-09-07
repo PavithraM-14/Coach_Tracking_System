@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-Auth::requireRole(['ADMIN']);
+Auth::requireRole(['ADMIN', 'PAINT_ADMIN']);
 
 $pdo = Db::get();
 

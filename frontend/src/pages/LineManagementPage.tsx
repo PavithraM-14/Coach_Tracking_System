@@ -384,10 +384,11 @@ export function LineManagementPage() {
   const [tab, setTab] = useState<TabKey>("paint-in");
 
   // Paint employees only ever do Paint In here, so they get the focused
-  // single view with no tab bar. Admin is read-only across every line type,
-  // so they get the full tabbed overview — Paint Out / Assembly In /
-  // Assembly Out included.
-  if (user?.role !== "ADMIN") {
+  // single view with no tab bar. Everyone else viewing this page is some
+  // flavor of admin, read-only across the line types their shop owns:
+  // Admin sees all four, Paint Admin sees Paint In/Out, Assembly Admin sees
+  // Assembly In/Out.
+  if (user?.role === "PAINT") {
     return (
       <div>
         <h2 className="text-lg font-semibold text-slate-800">Line Management</h2>
@@ -396,11 +397,19 @@ export function LineManagementPage() {
     );
   }
 
+  const visibleTabs =
+    user?.role === "PAINT_ADMIN"
+      ? TABS.filter((t) => t.key === "paint-in" || t.key === "paint-out")
+      : user?.role === "ASSEMBLY_ADMIN"
+        ? TABS.filter((t) => t.key === "assembly-in" || t.key === "assembly-out")
+        : TABS;
+  const activeTab = visibleTabs.some((t) => t.key === tab) ? tab : visibleTabs[0].key;
+
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-800">Line Management</h2>
       <div className="mt-3 flex gap-1 border-b border-slate-200">
-        {TABS.map((t) => {
+        {visibleTabs.map((t) => {
           const Icon = t.icon;
           return (
             <button
@@ -408,7 +417,7 @@ export function LineManagementPage() {
               type="button"
               onClick={() => setTab(t.key)}
               className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${
-                tab === t.key ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500 hover:text-slate-800"
+                activeTab === t.key ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500 hover:text-slate-800"
               }`}
             >
               <Icon size={15} />
@@ -418,10 +427,10 @@ export function LineManagementPage() {
         })}
       </div>
 
-      {tab === "paint-in" && <PaintInLines />}
-      {tab === "paint-out" && <PaintOutLinesView />}
-      {tab === "assembly-in" && <AssemblyInLinesView />}
-      {tab === "assembly-out" && <AssemblyOutLinesView />}
+      {activeTab === "paint-in" && <PaintInLines />}
+      {activeTab === "paint-out" && <PaintOutLinesView />}
+      {activeTab === "assembly-in" && <AssemblyInLinesView />}
+      {activeTab === "assembly-out" && <AssemblyOutLinesView />}
     </div>
   );
 }

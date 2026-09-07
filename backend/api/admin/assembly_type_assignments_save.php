@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-Auth::requireRole(['ADMIN']);
+Auth::requireRole(['ADMIN', 'ASSEMBLY_ADMIN']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Method not allowed.', 405);

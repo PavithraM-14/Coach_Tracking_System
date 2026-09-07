@@ -2,10 +2,22 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-Auth::requireRole(['ADMIN']);
+$currentUser = Auth::requireRole(['ADMIN', 'PAINT_ADMIN', 'ASSEMBLY_ADMIN']);
 
 $pdo = Db::get();
-$rows = $pdo->query('SELECT id, code, name FROM roles ORDER BY name')->fetchAll();
+
+// Paint Admin / Assembly Admin only ever create logins for their own shop's
+// workers — Admin creates every other role, including these two admin
+// roles themselves, but no longer PAINT/ASSEMBLY_PRODUCTION directly.
+if ($currentUser['role'] === 'PAINT_ADMIN') {
+    $rows = $pdo->query("SELECT id, code, name FROM roles WHERE code = 'PAINT'")->fetchAll();
+} elseif ($currentUser['role'] === 'ASSEMBLY_ADMIN') {
+    $rows = $pdo->query("SELECT id, code, name FROM roles WHERE code = 'ASSEMBLY_PRODUCTION'")->fetchAll();
+} else {
+    $rows = $pdo->query(
+        "SELECT id, code, name FROM roles WHERE code NOT IN ('PAINT', 'ASSEMBLY_PRODUCTION') ORDER BY name"
+    )->fetchAll();
+}
 
 $data = array_map(function ($row) {
     return [

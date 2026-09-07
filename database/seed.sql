@@ -31,7 +31,12 @@ INSERT INTO roles (id, code, name, description) VALUES
 (10, 'VENDOR_SNI',            'Vendor / SNI User',            'Updates only assigned vendor/SNI operations'),
 (11, 'FINAL_INSPECTION',      'Final Inspection / Clearance', 'Completes required final checks and supports Assembly Out readiness'),
 (12, 'OUTTURN_DISPATCH',      'Outturn / Dispatch',           'Local Outturn, Lock & Seal, Board Outturn and Dispatch'),
-(13, 'MANAGEMENT_VIEWER',     'Management / Viewer',          'Read-only dashboards and reports unless separately authorized');
+(13, 'MANAGEMENT_VIEWER',     'Management / Viewer',          'Read-only dashboards and reports unless separately authorized'),
+-- Scoped sub-admins: Admin no longer creates PAINT/ASSEMBLY_PRODUCTION
+-- workers directly — that's delegated to these two roles, each restricted
+-- to their own shop's worker logins and assignment matrix.
+(14, 'PAINT_ADMIN',           'Paint Admin',                  'Manages Paint Shop worker logins and the coach-type assignment matrix'),
+(15, 'ASSEMBLY_ADMIN',        'Assembly Admin',               'Manages Assembly Shop worker logins and the coach-type assignment matrix');
 
 -- ===================== Demo users =====================
 -- One login per role. All demo users share the password: Passw0rd!
@@ -63,7 +68,12 @@ INSERT INTO users (id, employee_no, full_name, username, password_hash, role_id)
 -- Outturn, dispatch4 = Physical Dispatch.
 (17, 'E1017', 'M. Rajesh',      'dispatch2',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12),
 (18, 'E1018', 'A. Saravanan',   'dispatch3',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12),
-(19, 'E1019', 'R. Elumalai',    'dispatch4',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12);
+(19, 'E1019', 'R. Elumalai',    'dispatch4',   '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 12),
+-- Scoped sub-admins (see roles 14/15 above): each manages only their own
+-- shop's worker logins plus that shop's coach-type assignment matrix.
+-- IDs deliberately out past the imported real rosters (20-81) below.
+(82, 'E1082', 'P. Anand',       'paintadmin1',    '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 14),
+(83, 'E1083', 'A. Bhavani',     'assemblyadmin1', '$2b$10$mhJB6MWMnvLgmLoQmusGjuDK89xZtfMqWHhdJcgKvXhXSK4nq7uFq', 15);
 
 -- Real Assembly Shop supervisors (Sr.Sec.Engr grade), sourced from the
 -- factory's cug employee directory: payunit '30A' (Assembly/Fur.) with

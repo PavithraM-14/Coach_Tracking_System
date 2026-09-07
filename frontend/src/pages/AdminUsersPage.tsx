@@ -224,8 +224,28 @@ function SkillEditor({ user, skills, onSaved }: { user: AdminUserRow; skills: Sk
   );
 }
 
+// Paint Admin / Assembly Admin manage exactly one worker role each — the
+// role dropdown always comes back from the backend with just that single
+// option, so it's auto-selected and shown as a fixed label instead of a
+// choice. Only the main Admin (with every other role available) sees a
+// real dropdown, and Admin never sees PAINT/ASSEMBLY_PRODUCTION in it
+// anymore — those are exclusively created by their scoped admin.
+const SCOPED_ADMIN_ROLES = ["PAINT_ADMIN", "ASSEMBLY_ADMIN"] as const;
+
+const PAGE_COPY: Record<string, { title: string; description: string }> = {
+  PAINT_ADMIN: {
+    title: "Paint Worker Management",
+    description: "Add, and remove, logins for Paint Shop workers (Paint In / Paint Out).",
+  },
+  ASSEMBLY_ADMIN: {
+    title: "Assembly Worker Management",
+    description: "Add, and remove, logins for Assembly Shop workers (Assembly In / Assembly Out).",
+  },
+};
+
 export function AdminUsersPage() {
   const { user: currentUser } = useAuth();
+  const isScopedAdmin = SCOPED_ADMIN_ROLES.includes(currentUser?.role as (typeof SCOPED_ADMIN_ROLES)[number]);
   const [users, setUsers] = useState<AdminUserRow[] | null>(null);
   const [roles, setRoles] = useState<RoleOption[] | null>(null);
   const [skills, setSkills] = useState<Skill[] | null>(null);
@@ -248,12 +268,27 @@ export function AdminUsersPage() {
   function reload() {
     getUsers().then((res) => setUsers(res.data));
     getRoles().then((res) => setRoles(res.data));
-    getSkills().then((res) => setSkills(res.data));
+    // Skills only ever apply to Furnishing/Outturn-Dispatch workers (see
+    // SKILL_ROLE_CODES below) — Paint Admin/Assembly Admin manage neither,
+    // and the endpoint is Admin-only, so skip it entirely for them.
+    if (!isScopedAdmin) {
+      getSkills().then((res) => setSkills(res.data));
+    }
   }
 
   useEffect(() => {
     reload();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // A scoped admin's role list is always exactly one option — select it as
+  // soon as it loads so the form is ready to submit without a manual pick.
+  useEffect(() => {
+    if (isScopedAdmin && roles && roles.length === 1 && !form.role_id) {
+      setForm((f) => ({ ...f, role_id: String(roles[0].id) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isScopedAdmin, roles]);
 
   const selectedRoleCode = roles?.find((r) => String(r.id) === form.role_id)?.code;
   const skillsForSelectedRole = selectedRoleCode
@@ -308,12 +343,14 @@ export function AdminUsersPage() {
     }
   }
 
+  const copy = currentUser ? PAGE_COPY[currentUser.role] : undefined;
+
   return (
     <div>
-      <h2 className="text-lg font-semibold text-slate-800">User Management</h2>
+      <h2 className="text-lg font-semibold text-slate-800">{copy?.title ?? "User Management"}</h2>
       <p className="mt-1 text-sm text-slate-500">
-        Create logins for each role and, for Furnishing/Paint employees, assign the skills that
-        drive the auto-assignment queue.
+        {copy?.description ??
+          "Create logins for each role and, for Furnishing/Paint employees, assign the skills that drive the auto-assignment queue."}
       </p>
 
       <form onSubmit={handleSubmit} className="mt-4 grid max-w-2xl grid-cols-2 gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -349,21 +386,27 @@ export function AdminUsersPage() {
           onChange={(e) => setForm({ ...form, password: e.target.value })}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
-        <select
-          value={form.role_id}
-          onChange={(e) => {
-            setForm({ ...form, role_id: e.target.value });
-            setNewUserSkillIds([]);
-          }}
-          className="col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
-        >
-          <option value="">Select role</option>
-          {roles?.map((role) => (
-            <option key={role.id} value={role.id}>
-              {role.name}
-            </option>
-          ))}
-        </select>
+        {isScopedAdmin ? (
+          <div className="col-span-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+            Role: <span className="font-medium text-slate-800">{roles?.[0]?.name ?? "…"}</span>
+          </div>
+        ) : (
+          <select
+            value={form.role_id}
+            onChange={(e) => {
+              setForm({ ...form, role_id: e.target.value });
+              setNewUserSkillIds([]);
+            }}
+            className="col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          >
+            <option value="">Select role</option>
+            {roles?.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+        )}
         <div className="col-span-2">
           <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Skills</label>
           <select

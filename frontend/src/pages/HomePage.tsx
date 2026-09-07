@@ -16,6 +16,7 @@ import {
   Landmark,
   Truck,
   ClipboardCheck,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
@@ -159,6 +160,66 @@ function AdminStats() {
         <PipelineStageCard label="Lock & Seal" done={v(stats?.total_lock_seal)} waiting={v(stats?.awaiting_lock_seal)} waitingLabel="Waiting" to="/lock-seal/history" />
         <PipelineStageCard label="Railway Board Outturn" done={v(stats?.total_board_outturn)} waiting={v(stats?.awaiting_board_outturn)} waitingLabel="Waiting" to="/board-outturn/history" />
         <PipelineStageCard label="Physical Dispatch" done={v(stats?.total_physical_dispatch)} waiting={v(stats?.awaiting_physical_dispatch)} waitingLabel="Waiting" to="/physical-dispatch/history" />
+      </PipelineGrid>
+    </>
+  );
+}
+
+// Paint Admin / Assembly Admin are scoped sub-admins — a worker-count tile
+// plus that one shop's slice of the same pipeline WIP numbers Admin's
+// dashboard already computes system-wide (dashboard_stats.php), instead of
+// duplicating that query per-shop.
+function PaintAdminStats() {
+  const [workerCount, setWorkerCount] = useState<number | null>(null);
+  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
+
+  useEffect(() => {
+    getUsers().then((res) => setWorkerCount(res.data.length));
+    getAdminDashboardStats().then(setStats);
+  }, []);
+
+  const v = (n: number | undefined) => n ?? "…";
+
+  return (
+    <>
+      <StatGrid>
+        <StatCard icon={Users} color="blue" label="Paint Workers" value={workerCount ?? "…"} description="Active Paint Shop logins" to="/admin/users" />
+        <StatCard icon={LayoutGrid} color="indigo" label="Paint Assignments" value="Manage" description="Supervisor / coach-type matrix" to="/admin/paint-assignments" />
+        <StatCard icon={Layers} color="purple" label="Line Management" value="View" description="Paint In / Out line occupancy" to="/line-management" />
+      </StatGrid>
+
+      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-400">Pipeline — Paint stage WIP</p>
+      <PipelineGrid>
+        <PipelineStageCard label="Paint In" done={v(stats?.total_paint_in)} waiting={v(stats?.awaiting_paint_in)} waitingLabel="Pending" to="/line-management" />
+        <PipelineStageCard label="Paint Out" done={v(stats?.total_paint_out)} waiting={v(stats?.awaiting_paint_out)} waitingLabel="Pending" to="/line-management" />
+      </PipelineGrid>
+    </>
+  );
+}
+
+function AssemblyAdminStats() {
+  const [workerCount, setWorkerCount] = useState<number | null>(null);
+  const [stats, setStats] = useState<AdminDashboardStats | null>(null);
+
+  useEffect(() => {
+    getUsers().then((res) => setWorkerCount(res.data.length));
+    getAdminDashboardStats().then(setStats);
+  }, []);
+
+  const v = (n: number | undefined) => n ?? "…";
+
+  return (
+    <>
+      <StatGrid>
+        <StatCard icon={Users} color="blue" label="Assembly Workers" value={workerCount ?? "…"} description="Active Assembly Shop logins" to="/admin/users" />
+        <StatCard icon={LayoutGrid} color="indigo" label="Assembly Assignments" value="Manage" description="Supervisor / coach-type matrix" to="/admin/assembly-assignments" />
+        <StatCard icon={Layers} color="purple" label="Line Management" value="View" description="Assembly In / Out line occupancy" to="/line-management" />
+      </StatGrid>
+
+      <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-slate-400">Pipeline — Assembly stage WIP</p>
+      <PipelineGrid>
+        <PipelineStageCard label="Assembly In" done={v(stats?.total_assembly_in)} waiting={v(stats?.awaiting_assembly_in)} waitingLabel="Pending" to="/line-management" />
+        <PipelineStageCard label="Assembly Out" done={v(stats?.total_assembly_out)} waiting={v(stats?.awaiting_assembly_out)} waitingLabel="Pending" to="/line-management" />
       </PipelineGrid>
     </>
   );
@@ -679,6 +740,8 @@ export function HomePage() {
       <h2 className="text-lg font-semibold text-slate-800">Dashboard</h2>
 
       {user?.role === "ADMIN" && <AdminStats />}
+      {user?.role === "PAINT_ADMIN" && <PaintAdminStats />}
+      {user?.role === "ASSEMBLY_ADMIN" && <AssemblyAdminStats />}
       {user?.role === "SHELL_PRODUCTION" && <ShellProductionStats />}
       {user?.role === "FURNISHING" && capabilities.includes("FURNISHING") && <FurnishingStats />}
       {user?.role === "PAINT" && <PaintStats capabilities={capabilities} />}

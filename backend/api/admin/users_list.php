@@ -2,15 +2,30 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-Auth::requireRole(['ADMIN']);
+$currentUser = Auth::requireRole(['ADMIN', 'PAINT_ADMIN', 'ASSEMBLY_ADMIN']);
 
 $pdo = Db::get();
-$rows = $pdo->query(
-    'SELECT u.id, u.employee_no, u.full_name, u.username, u.email, u.is_active, u.created_at, r.code AS role
-     FROM users u
-     JOIN roles r ON r.id = u.role_id
-     ORDER BY u.created_at DESC'
-)->fetchAll();
+
+// Paint Admin / Assembly Admin only ever see the workers they manage; Admin
+// keeps full read-only visibility across every role, including these two.
+$scopedRole = null;
+if ($currentUser['role'] === 'PAINT_ADMIN') {
+    $scopedRole = 'PAINT';
+} elseif ($currentUser['role'] === 'ASSEMBLY_ADMIN') {
+    $scopedRole = 'ASSEMBLY_PRODUCTION';
+}
+
+$sql = 'SELECT u.id, u.employee_no, u.full_name, u.username, u.email, u.is_active, u.created_at, r.code AS role
+        FROM users u
+        JOIN roles r ON r.id = u.role_id';
+if ($scopedRole !== null) {
+    $sql .= ' WHERE r.code = :scoped_role';
+}
+$sql .= ' ORDER BY u.created_at DESC';
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($scopedRole !== null ? ['scoped_role' => $scopedRole] : []);
+$rows = $stmt->fetchAll();
 
 $skillRows = $pdo->query(
     'SELECT us.user_id, s.id AS skill_id, s.name

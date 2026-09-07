@@ -64,7 +64,7 @@ function App() {
                   <Route
                     path="/admin/users"
                     element={
-                      <ProtectedRoute allowedRoles={["ADMIN"]}>
+                      <ProtectedRoute allowedRoles={["ADMIN", "PAINT_ADMIN", "ASSEMBLY_ADMIN"]}>
                         <AdminUsersPage />
                       </ProtectedRoute>
                     }
@@ -141,7 +141,7 @@ function App() {
                   <Route
                     path="/line-management"
                     element={
-                      <ProtectedRoute allowedRoles={["ADMIN"]}>
+                      <ProtectedRoute allowedRoles={["ADMIN", "PAINT_ADMIN", "ASSEMBLY_ADMIN"]}>
                         <LineManagementPage />
                       </ProtectedRoute>
                     }
@@ -178,7 +178,7 @@ function App() {
                   <Route
                     path="/admin/paint-assignments"
                     element={
-                      <ProtectedRoute allowedRoles={["ADMIN"]}>
+                      <ProtectedRoute allowedRoles={["ADMIN", "PAINT_ADMIN"]}>
                         <PaintAssignmentMatrixPage />
                       </ProtectedRoute>
                     }
@@ -186,7 +186,7 @@ function App() {
                   <Route
                     path="/admin/assembly-assignments"
                     element={
-                      <ProtectedRoute allowedRoles={["ADMIN"]}>
+                      <ProtectedRoute allowedRoles={["ADMIN", "ASSEMBLY_ADMIN"]}>
                         <AssemblyAssignmentMatrixPage />
                       </ProtectedRoute>
                     }
