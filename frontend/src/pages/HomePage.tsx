@@ -265,11 +265,11 @@ function FurnishingStats() {
         icon={PackageCheck}
         color="blue"
         label="Total Furnishing In Records"
-        value={total ?? "…"}
+        value={pending === null || total === null ? "…" : pending + total}
         description={
-          stillAtFurnishing === null || movedToPaintIn === null
-            ? "By current stage"
-            : `${stillAtFurnishing} still at Furnishing In · ${movedToPaintIn} moved to Paint In`
+          pending === null || stillAtFurnishing === null || movedToPaintIn === null
+            ? "Every coach that has reached Furnishing In, by status"
+            : `${pending} pending · ${stillAtFurnishing} at Furnishing In · ${movedToPaintIn} moved to Paint In`
         }
         to="/furnishing-in/history"
       />
