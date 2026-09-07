@@ -9,6 +9,7 @@ import type {
   ProductionOrderCreateResponse,
   ProductionOrderRow,
   RoleOption,
+  ScheduleRow,
   Skill,
 } from "../types";
 
@@ -129,5 +130,35 @@ export function createProductionOrder(
   return apiRequest("/admin/production_orders_create.php", {
     method: "POST",
     body: input,
+  });
+}
+
+export function getSchedules(q?: string): Promise<{ data: ScheduleRow[] }> {
+  return apiRequest(`/admin/schedules_list.php${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+}
+
+export interface SaveScheduleInput {
+  coach_type_id: number;
+  shell_to_furnishing_days: number;
+  furnishing_to_paint_in_days: number;
+  paint_in_to_paint_out_days: number;
+  paint_out_to_assembly_in_days: number;
+  assembly_in_to_assembly_out_days: number;
+  assembly_out_to_local_outturn_days: number;
+  local_outturn_to_dispatch_days: number;
+  target_total_days: number;
+}
+
+export function saveSchedule(input: SaveScheduleInput): Promise<SaveScheduleInput> {
+  return apiRequest("/admin/schedules_save.php", {
+    method: "POST",
+    body: input,
+  });
+}
+
+export function renameCoachCategory(categoryId: number, name: string): Promise<{ category_id: number; name: string }> {
+  return apiRequest("/admin/coach_categories_rename.php", {
+    method: "POST",
+    body: { category_id: categoryId, name },
   });
 }

@@ -118,6 +118,7 @@ export function AssemblyOutPage() {
           <FieldReadOnly label="Plant" value={selectedCoach.plant} />
           <FieldReadOnly label="Production Year" value={selectedCoach.production_year} />
           <FieldReadOnly label="BO Number" value={`${selectedCoach.bo_number}-${selectedCoach.bo_item}`} />
+          <FieldReadOnly label="Predicted Date" value={selectedCoach.predicted_date ?? "—"} />
         </div>
       )}
 

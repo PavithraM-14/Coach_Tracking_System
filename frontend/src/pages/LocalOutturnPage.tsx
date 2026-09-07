@@ -134,6 +134,7 @@ export function LocalOutturnPage() {
           <FieldReadOnly label="Plant" value={selectedCoach.plant} />
           <FieldReadOnly label="Production Year" value={selectedCoach.production_year} />
           <FieldReadOnly label="Assembly Out Date" value={formatDateForDisplay(toLocalDate(selectedCoach.assembly_out_datetime))} />
+          <FieldReadOnly label="Predicted Date" value={selectedCoach.predicted_date ?? "—"} />
         </div>
       )}
 

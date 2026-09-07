@@ -78,6 +78,10 @@ export interface WorklistCoach {
   bo_number: string;
   bo_item: number;
   installation_no: string | null;
+  // Prior stage's actual date + that transition's target days from
+  // fixed_schedules (see backend/lib/Schedule.php) — null if no schedule row
+  // exists yet for this coach type.
+  predicted_date: string | null;
 }
 
 export interface ShellOutturnCreateResponse {
@@ -498,6 +502,24 @@ export interface AdminLookups {
   production_years: Array<{ id: number; year_code: string }>;
   coach_types: Array<{ id: number; code: string; name: string; category_name: string }>;
   coach_categories: Array<{ id: number; code: string; name: string }>;
+}
+
+// One coach type's target day-counts, for the Admin Schedule page.
+export interface ScheduleRow {
+  coach_type_id: number;
+  code: string;
+  name: string;
+  is_lhb: boolean;
+  category_id: number;
+  category_name: string;
+  shell_to_furnishing_days: number | null;
+  furnishing_to_paint_in_days: number | null;
+  paint_in_to_paint_out_days: number | null;
+  paint_out_to_assembly_in_days: number | null;
+  assembly_in_to_assembly_out_days: number | null;
+  assembly_out_to_local_outturn_days: number | null;
+  local_outturn_to_dispatch_days: number | null;
+  target_total_days: number | null;
 }
 
 export interface ProductionOrderRow {

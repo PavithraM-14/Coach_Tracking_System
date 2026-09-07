@@ -8,6 +8,7 @@ import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { HomePage } from "./pages/HomePage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { AdminProductionOrdersPage } from "./pages/AdminProductionOrdersPage";
+import { AdminSchedulePage } from "./pages/AdminSchedulePage";
 import { ShellProductionPage } from "./pages/ShellProductionPage";
 import { ShellOutturnEntryPage } from "./pages/ShellOutturnEntryPage";
 import { ShellOutturnHistoryPage } from "./pages/ShellOutturnHistoryPage";
@@ -83,6 +84,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["ADMIN"]}>
                         <AdminProductionOrdersPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/schedule"
+                    element={
+                      <ProtectedRoute allowedRoles={["ADMIN"]}>
+                        <AdminSchedulePage />
                       </ProtectedRoute>
                     }
                   />

@@ -128,6 +128,7 @@ export function BoardOutturnPage() {
           <FieldReadOnly label="Production Year" value={selectedCoach.production_year} />
           <FieldReadOnly label="Lock & Seal Date" value={formatDateForDisplay(toLocalDate(selectedCoach.lock_seal_datetime))} />
           <FieldReadOnly label="Outturn Serial No." value={selectedCoach.outturn_serial_no ?? "—"} />
+          <FieldReadOnly label="Predicted Date" value={selectedCoach.predicted_date ?? "—"} />
         </div>
       )}
 

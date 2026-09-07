@@ -10,7 +10,8 @@ $stmt = $pdo->prepare(
             ct.name AS coach_type, cc.name AS coach_category,
             p.name AS plant, py.year_code AS production_year,
             po.bo_number, po.bo_item, po.installation_no,
-            sot.outturn_datetime AS shell_outturn_datetime
+            sot.outturn_datetime AS shell_outturn_datetime,
+            fs.shell_to_furnishing_days
      FROM coach_assignments ca
      JOIN coaches c ON c.id = ca.coach_id
      JOIN production_orders po ON po.id = c.production_order_id
@@ -19,6 +20,7 @@ $stmt = $pdo->prepare(
      JOIN plants p ON p.id = po.plant_id
      JOIN production_years py ON py.id = po.production_year_id
      JOIN shell_outturn_transactions sot ON sot.coach_id = c.id
+     LEFT JOIN fixed_schedules fs ON fs.coach_type_id = c.coach_type_id
      WHERE ca.module = 'FURNISHING' AND ca.status = 'ASSIGNED' AND ca.assigned_user_id = :user_id
      ORDER BY c.coach_number"
 );
@@ -38,6 +40,10 @@ $data = array_map(function ($row) {
         'bo_item' => (int) $row['bo_item'],
         'installation_no' => $row['installation_no'],
         'shell_outturn_datetime' => $row['shell_outturn_datetime'],
+        'predicted_date' => Schedule::addDays(
+            $row['shell_outturn_datetime'],
+            $row['shell_to_furnishing_days'] !== null ? (int) $row['shell_to_furnishing_days'] : null
+        ),
     ];
 }, $rows);
 

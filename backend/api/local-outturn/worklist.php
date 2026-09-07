@@ -10,7 +10,8 @@ $stmt = $pdo->prepare(
             ct.name AS coach_type, cc.name AS coach_category,
             p.name AS plant, py.year_code AS production_year,
             po.bo_number, po.bo_item, po.installation_no,
-            prior.assembly_out_datetime AS assembly_out_datetime
+            prior.assembly_out_datetime AS assembly_out_datetime,
+            fs.assembly_out_to_local_outturn_days
      FROM coach_assignments ca
      JOIN coaches c ON c.id = ca.coach_id
      JOIN production_orders po ON po.id = c.production_order_id
@@ -19,6 +20,7 @@ $stmt = $pdo->prepare(
      JOIN plants p ON p.id = po.plant_id
      JOIN production_years py ON py.id = po.production_year_id
      JOIN assembly_out_transactions prior ON prior.coach_id = c.id
+     LEFT JOIN fixed_schedules fs ON fs.coach_type_id = c.coach_type_id
      WHERE ca.module = 'LOCAL_OUTTURN' AND ca.status = 'ASSIGNED' AND ca.assigned_user_id = :user_id
      ORDER BY c.coach_number"
 );
@@ -38,6 +40,10 @@ $data = array_map(function ($row) {
         'bo_item' => (int) $row['bo_item'],
         'installation_no' => $row['installation_no'],
         'assembly_out_datetime' => $row['assembly_out_datetime'],
+        'predicted_date' => Schedule::addDays(
+            $row['assembly_out_datetime'],
+            $row['assembly_out_to_local_outturn_days'] !== null ? (int) $row['assembly_out_to_local_outturn_days'] : null
+        ),
     ];
 }, $rows);
 

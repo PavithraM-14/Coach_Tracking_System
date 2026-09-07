@@ -19,6 +19,7 @@ import {
   Clock,
   Wrench,
   Building2,
+  CalendarClock,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
@@ -44,6 +45,7 @@ interface NavItem {
 // modules/pages now, not one shared component branching on role.
 export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/production-orders", label: "Production Orders", icon: FileText, roles: ["ADMIN"] },
+  { to: "/admin/schedule", label: "Target Schedule", icon: CalendarClock, roles: ["ADMIN"] },
   { to: "/admin/users", label: "User Management", icon: Users, roles: ["ADMIN", "PAINT_ADMIN", "ASSEMBLY_ADMIN"] },
   { to: "/admin/paint-assignments", label: "Paint Assignments", icon: LayoutGrid, roles: ["PAINT_ADMIN"] },
   { to: "/admin/assembly-assignments", label: "Assembly Assignments", icon: LayoutGrid, roles: ["ASSEMBLY_ADMIN"] },

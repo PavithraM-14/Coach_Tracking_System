@@ -93,10 +93,16 @@ CREATE TABLE coach_types (
   FOREIGN KEY (category_id) REFERENCES coach_categories(id)
 );
 
+-- Target day-counts per coach type, per stage transition, used to compute
+-- each stage's Predicted Date (see backend/lib/Schedule.php: previous
+-- stage's actual date + the relevant column below). Sourced from ICF's
+-- legacy `tbl_coach_schedule` export (see seed.sql) — shell_to_furnishing_days
+-- is 1 for every real coach type in that source, not 0 as originally assumed
+-- in this project.
 CREATE TABLE fixed_schedules (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coach_type_id INT NOT NULL UNIQUE,
-  shell_to_furnishing_days INT NOT NULL DEFAULT 0,   -- rule: always 0 (same event)
+  shell_to_furnishing_days INT NOT NULL DEFAULT 0,
   furnishing_to_paint_in_days INT NOT NULL DEFAULT 0,
   paint_in_to_paint_out_days INT NOT NULL DEFAULT 0,
   paint_out_to_assembly_in_days INT NOT NULL DEFAULT 0,
