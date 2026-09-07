@@ -271,7 +271,6 @@ function FurnishingStats() {
             ? "Every coach that has reached Furnishing In, by status"
             : `${pending} pending · ${stillAtFurnishing} at Furnishing In · ${movedToPaintIn} moved to Paint In`
         }
-        to="/furnishing-in/history"
       />
     </StatGrid>
   );
