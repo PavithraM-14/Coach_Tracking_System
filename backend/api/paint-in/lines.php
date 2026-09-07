@@ -10,10 +10,11 @@ $lines = $pdo->query('SELECT id, code, name, total_slots FROM paint_lines WHERE 
 
 $slotRows = $pdo->query(
     "SELECT s.id AS slot_id, s.paint_line_id, s.slot_number,
-            pit.id AS paint_in_id, c.coach_number
+            pit.id AS paint_in_id, c.coach_number, u.full_name AS recorded_by
      FROM paint_line_slots s
      LEFT JOIN paint_in_transactions pit ON pit.slot_id = s.id
      LEFT JOIN coaches c ON c.id = pit.coach_id
+     LEFT JOIN users u ON u.id = pit.recorded_by_user_id
      ORDER BY s.paint_line_id, s.slot_number"
 )->fetchAll();
 
@@ -25,6 +26,7 @@ foreach ($slotRows as $row) {
         'slot_number' => (int) $row['slot_number'],
         'is_occupied' => $row['paint_in_id'] !== null,
         'coach_number' => $row['coach_number'],
+        'recorded_by' => $row['recorded_by'],
     ];
 }
 

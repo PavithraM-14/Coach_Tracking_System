@@ -37,7 +37,13 @@ function ReadOnlyLines<TLine extends { name: string; total_slots: number; occupi
   recordsLabel: string;
   description: string;
   getKey: (line: TLine) => number;
-  getSlots: (line: TLine) => Array<{ slot_id: number; slot_number: number; is_occupied: boolean; coach_number: string | null }>;
+  getSlots: (line: TLine) => Array<{
+    slot_id: number;
+    slot_number: number;
+    is_occupied: boolean;
+    coach_number: string | null;
+    recorded_by: string | null;
+  }>;
 }) {
   const [lines, setLines] = useState<TLine[] | null>(null);
   const [bookedCount, setBookedCount] = useState<number | null>(null);
@@ -88,7 +94,11 @@ function ReadOnlyLines<TLine extends { name: string; total_slots: number; occupi
                     key={slot.slot_id}
                     type="button"
                     disabled
-                    title={slot.is_occupied ? `Occupied by ${slot.coach_number}` : `Slot ${slot.slot_number}`}
+                    title={
+                      slot.is_occupied
+                        ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""}`
+                        : `Slot ${slot.slot_number}`
+                    }
                     className={`cursor-default rounded py-1 text-xs font-medium ${
                       slot.is_occupied ? "bg-orange-100 text-orange-700" : "bg-green-100 text-green-800"
                     }`}
@@ -97,6 +107,18 @@ function ReadOnlyLines<TLine extends { name: string; total_slots: number; occupi
                   </button>
                 ))}
               </div>
+              {getSlots(line).some((s) => s.is_occupied) && (
+                <div className="mt-2 space-y-0.5 border-t border-slate-100 pt-2">
+                  {getSlots(line)
+                    .filter((s) => s.is_occupied)
+                    .map((s) => (
+                      <p key={s.slot_id} className="text-[11px] text-slate-500">
+                        Slot {s.slot_number}: <span className="font-medium text-slate-700">{s.coach_number}</span>
+                        {s.recorded_by && <> · by {s.recorded_by}</>}
+                      </p>
+                    ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -147,6 +169,10 @@ function AssemblyOutLinesView() {
 function PaintInLines() {
   const { user } = useAuth();
   const canAllocate = user?.role === "PAINT";
+  // Admin oversees every stage, so quick links to all four record pages are
+  // useful there. Paint (worker) and Paint Admin only ever deal with Paint
+  // In/Out — Assembly record links are noise for them.
+  const showAllRecordLinks = user?.role === "ADMIN";
 
   const [lines, setLines] = useState<PaintLine[] | null>(null);
   const [bookedCount, setBookedCount] = useState<number | null>(null);
@@ -241,18 +267,22 @@ function PaintInLines() {
         >
           Paint Out Records →
         </Link>
-        <Link
-          to="/assembly-in/history"
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-        >
-          Assembly In Records →
-        </Link>
-        <Link
-          to="/assembly-out/history"
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-        >
-          Assembly Out Records →
-        </Link>
+        {showAllRecordLinks && (
+          <>
+            <Link
+              to="/assembly-in/history"
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              Assembly In Records →
+            </Link>
+            <Link
+              to="/assembly-out/history"
+              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              Assembly Out Records →
+            </Link>
+          </>
+        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -290,7 +320,11 @@ function PaintInLines() {
                     type="button"
                     disabled={slot.is_occupied || !canAllocate}
                     onClick={() => canAllocate && setSelectedSlotId(slot.slot_id)}
-                    title={slot.is_occupied ? `Occupied by ${slot.coach_number}` : `Slot ${slot.slot_number}`}
+                    title={
+                      slot.is_occupied
+                        ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""}`
+                        : `Slot ${slot.slot_number}`
+                    }
                     className={`rounded py-1 text-xs font-medium ${
                       slot.is_occupied
                         ? "cursor-not-allowed bg-orange-100 text-orange-700"
@@ -305,6 +339,18 @@ function PaintInLines() {
                   </button>
                 ))}
               </div>
+              {line.slots.some((s) => s.is_occupied) && (
+                <div className="mt-2 space-y-0.5 border-t border-slate-100 pt-2">
+                  {line.slots
+                    .filter((s) => s.is_occupied)
+                    .map((s) => (
+                      <p key={s.slot_id} className="text-[11px] text-slate-500">
+                        Slot {s.slot_number}: <span className="font-medium text-slate-700">{s.coach_number}</span>
+                        {s.recorded_by && <> · by {s.recorded_by}</>}
+                      </p>
+                    ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

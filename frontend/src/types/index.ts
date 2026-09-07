@@ -216,6 +216,7 @@ export interface PaintLineSlot {
   slot_number: number;
   is_occupied: boolean;
   coach_number: string | null;
+  recorded_by: string | null;
 }
 
 export interface PaintLine {
@@ -254,6 +255,7 @@ export interface PaintOutLineSlot {
   slot_number: number;
   is_occupied: boolean;
   coach_number: string | null;
+  recorded_by: string | null;
 }
 
 export interface PaintOutLine {
@@ -289,6 +291,7 @@ export interface AssemblyInLineSlot {
   slot_number: number;
   is_occupied: boolean;
   coach_number: string | null;
+  recorded_by: string | null;
 }
 
 export interface AssemblyInLine {
@@ -324,6 +327,7 @@ export interface AssemblyOutLineSlot {
   slot_number: number;
   is_occupied: boolean;
   coach_number: string | null;
+  recorded_by: string | null;
 }
 
 export interface AssemblyOutLine {

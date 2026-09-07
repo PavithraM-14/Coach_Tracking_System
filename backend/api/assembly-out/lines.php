@@ -10,10 +10,11 @@ $lines = $pdo->query('SELECT id, code, name, total_slots FROM assembly_out_lines
 
 $slotRows = $pdo->query(
     "SELECT s.id AS slot_id, s.assembly_out_line_id, s.slot_number,
-            aot.id AS assembly_out_id, c.coach_number
+            aot.id AS assembly_out_id, c.coach_number, u.full_name AS recorded_by
      FROM assembly_out_line_slots s
      LEFT JOIN assembly_out_transactions aot ON aot.slot_id = s.id
      LEFT JOIN coaches c ON c.id = aot.coach_id
+     LEFT JOIN users u ON u.id = aot.recorded_by_user_id
      ORDER BY s.assembly_out_line_id, s.slot_number"
 )->fetchAll();
 
@@ -25,6 +26,7 @@ foreach ($slotRows as $row) {
         'slot_number' => (int) $row['slot_number'],
         'is_occupied' => $row['assembly_out_id'] !== null,
         'coach_number' => $row['coach_number'],
+        'recorded_by' => $row['recorded_by'],
     ];
 }
 
