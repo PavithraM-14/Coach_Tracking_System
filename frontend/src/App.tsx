@@ -35,6 +35,7 @@ import { PhysicalDispatchPage } from "./pages/PhysicalDispatchPage";
 import { PhysicalDispatchHistoryPage } from "./pages/PhysicalDispatchHistoryPage";
 import { ProfilePage } from "./pages/ProfilePage";
 import { PendingCoachesPage } from "./pages/PendingCoachesPage";
+import { FurnishingStagesPage } from "./pages/FurnishingStagesPage";
 import { getFurnishingInWorklist } from "./api/furnishingIn";
 import { getPaintInWorklist } from "./api/paintIn";
 import { getPaintOutWorklist } from "./api/paintOut";
@@ -126,6 +127,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["FURNISHING"]}>
                         <FurnishingInHistoryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/furnishing-in/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["FURNISHING"]}>
+                        <FurnishingStagesPage />
                       </ProtectedRoute>
                     }
                   />
