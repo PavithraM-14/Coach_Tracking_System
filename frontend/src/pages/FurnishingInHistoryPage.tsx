@@ -4,7 +4,7 @@ import { Search } from "lucide-react";
 import { getFurnishingInList } from "../api/furnishingIn";
 import type { FurnishingInRow } from "../types";
 import { ApiError } from "../api/client";
-import { formatDateOnly, formatDateTime } from "../utils/dateFormat";
+import { formatDateOnly } from "../utils/dateFormat";
 
 export function FurnishingInHistoryPage() {
   const [rows, setRows] = useState<FurnishingInRow[] | null>(null);
@@ -40,7 +40,7 @@ export function FurnishingInHistoryPage() {
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-800">
-        Furnishing In Records{todayOnly && " — Today"}
+        Total Completed Records{todayOnly && " — Today"}
       </h2>
       <p className="mt-1 text-sm text-slate-500">
         {todayOnly
@@ -110,7 +110,6 @@ export function FurnishingInHistoryPage() {
                 <th className="px-4 py-2">Coach Type</th>
                 <th className="px-4 py-2">Furnishing In Date</th>
                 <th className="px-4 py-2">Recorded By</th>
-                <th className="px-4 py-2">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -129,19 +128,6 @@ export function FurnishingInHistoryPage() {
                       )}
                     </td>
                     <td className="px-4 py-2">{row.recorded_by}</td>
-                    <td className="px-4 py-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-                          row.status === "PAINT_IN"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-amber-100 text-amber-700"
-                        }`}
-                      >
-                        {row.status === "PAINT_IN"
-                          ? `Paint In · ${row.paint_in_datetime ? formatDateTime(row.paint_in_datetime) : ""}`
-                          : "Awaiting Paint In"}
-                      </span>
-                    </td>
                   </tr>
                 );
               })}
