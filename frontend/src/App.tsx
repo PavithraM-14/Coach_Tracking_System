@@ -38,6 +38,10 @@ import { PaintInStagesPage } from "./pages/PaintInStagesPage";
 import { PaintOutStagesPage } from "./pages/PaintOutStagesPage";
 import { AssemblyInStagesPage } from "./pages/AssemblyInStagesPage";
 import { AssemblyOutStagesPage } from "./pages/AssemblyOutStagesPage";
+import { LocalOutturnStagesPage } from "./pages/LocalOutturnStagesPage";
+import { LockSealStagesPage } from "./pages/LockSealStagesPage";
+import { BoardOutturnStagesPage } from "./pages/BoardOutturnStagesPage";
+import { PhysicalDispatchStagesPage } from "./pages/PhysicalDispatchStagesPage";
 import { getFurnishingInWorklist } from "./api/furnishingIn";
 import { getPaintInWorklist } from "./api/paintIn";
 import { getPaintOutWorklist } from "./api/paintOut";
@@ -350,6 +354,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="/local-outturn/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH", "ADMIN"]}>
+                        <LocalOutturnStagesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/lock-seal/pending"
                     element={
                       <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH"]} requiredModule="LOCK_SEAL">
@@ -375,6 +387,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH", "ADMIN"]}>
                         <LockSealHistoryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/lock-seal/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH", "ADMIN"]}>
+                        <LockSealStagesPage />
                       </ProtectedRoute>
                     }
                   />
@@ -408,6 +428,14 @@ function App() {
                     }
                   />
                   <Route
+                    path="/board-outturn/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH", "ADMIN"]}>
+                        <BoardOutturnStagesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
                     path="/physical-dispatch/pending"
                     element={
                       <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH"]} requiredModule="PHYSICAL_DISPATCH">
@@ -433,6 +461,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH", "ADMIN"]}>
                         <PhysicalDispatchHistoryPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/physical-dispatch/stages"
+                    element={
+                      <ProtectedRoute allowedRoles={["OUTTURN_DISPATCH", "ADMIN"]}>
+                        <PhysicalDispatchStagesPage />
                       </ProtectedRoute>
                     }
                   />

@@ -519,121 +519,145 @@ function AssemblyStats({ capabilities }: { capabilities: string[] }) {
   );
 }
 
-// Records recorded in the last 7 days (inclusive of today) — a trend signal
-// distinct from "today" and "all-time total", computed client-side from the
-// same list response rather than a separate API call.
-function withinLastWeek(dateStr: string): boolean {
-  const recorded = new Date(dateStr.slice(0, 10) + "T00:00:00");
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - 6);
-  cutoff.setHours(0, 0, 0, 0);
-  return recorded >= cutoff;
-}
-
-// The four final stages have no line/slot grid (unlike Paint/Assembly), so
-// their dashboard cards drop the "Available Slots" tile in favor of a
-// "This Week" trend tile — Awaiting / Today / This Week / Total, same
-// reasoning as Furnishing's simpler model.
+// The four final stages have no line/slot grid (unlike Paint/Assembly) and
+// no further tracked stage after them, so their "Total Records" tile is a
+// simple pending/completed breakdown — same reasoning as Assembly Out's.
 function LocalOutturnStats() {
-  const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
-  const [doneToday, setDoneToday] = useState<number | null>(null);
-  const [thisWeek, setThisWeek] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
 
   useEffect(() => {
-    getLocalOutturnWorklist().then((res) => setAwaiting(res.data.length));
+    getLocalOutturnWorklist().then((res) => setPending(res.data.length));
     getLocalOutturnList().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
-      setTotalRecords(res.data.length);
-      setDoneToday(res.data.filter((r) => r.local_outturn_datetime.slice(0, 10) === todayStr).length);
-      setThisWeek(res.data.filter((r) => withinLastWeek(r.local_outturn_datetime)).length);
+      setTotalCompleted(res.data.length);
+      setCompletedToday(res.data.filter((r) => r.local_outturn_datetime.slice(0, 10) === todayStr).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Local Outturn" value={awaiting ?? "…"} description="Assembly Out done, pending allocation" to="/local-outturn" />
-      <StatCard icon={ClipboardList} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Local Outturn recorded today" to="/local-outturn/history?today=1" />
-      <StatCard icon={ClipboardCheck} color="purple" label="This Week" value={thisWeek ?? "…"} description="Local Outturn recorded, last 7 days" to="/local-outturn/history" />
-      <StatCard icon={ClipboardCheck} color="blue" label="Total Local Outturn Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/local-outturn/history" />
+      <StatCard icon={Clock} color="amber" label="Pending Local Outturn" value={pending ?? "…"} description="Assembly Out done, pending allocation" to="/local-outturn" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Local Outturn recorded today" to="/local-outturn/history?today=1" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Local Outturn completions" to="/local-outturn/history" />
+      <StatCard
+        icon={ClipboardCheck}
+        color="blue"
+        label="Total Local Outturn Records"
+        value={pending === null || totalCompleted === null ? "…" : pending + totalCompleted}
+        description={
+          pending === null || totalCompleted === null
+            ? "Every coach that has reached Local Outturn, by status"
+            : `${pending} pending · ${totalCompleted} completed`
+        }
+        to="/local-outturn/stages"
+      />
     </StatGrid>
   );
 }
 
 function LockSealStats() {
-  const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
-  const [doneToday, setDoneToday] = useState<number | null>(null);
-  const [thisWeek, setThisWeek] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
 
   useEffect(() => {
-    getLockSealWorklist().then((res) => setAwaiting(res.data.length));
+    getLockSealWorklist().then((res) => setPending(res.data.length));
     getLockSealList().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
-      setTotalRecords(res.data.length);
-      setDoneToday(res.data.filter((r) => r.lock_seal_datetime.slice(0, 10) === todayStr).length);
-      setThisWeek(res.data.filter((r) => withinLastWeek(r.lock_seal_datetime)).length);
+      setTotalCompleted(res.data.length);
+      setCompletedToday(res.data.filter((r) => r.lock_seal_datetime.slice(0, 10) === todayStr).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Lock & Seal" value={awaiting ?? "…"} description="Local Outturn done, pending allocation" to="/lock-seal" />
-      <StatCard icon={Lock} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Lock & Seal recorded today" to="/lock-seal/history?today=1" />
-      <StatCard icon={Lock} color="purple" label="This Week" value={thisWeek ?? "…"} description="Lock & Seal recorded, last 7 days" to="/lock-seal/history" />
-      <StatCard icon={Lock} color="green" label="Total Lock & Seal Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/lock-seal/history" />
+      <StatCard icon={Clock} color="amber" label="Pending Lock & Seal" value={pending ?? "…"} description="Local Outturn done, pending allocation" to="/lock-seal" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Lock & Seal recorded today" to="/lock-seal/history?today=1" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Lock & Seal completions" to="/lock-seal/history" />
+      <StatCard
+        icon={Lock}
+        color="blue"
+        label="Total Lock & Seal Records"
+        value={pending === null || totalCompleted === null ? "…" : pending + totalCompleted}
+        description={
+          pending === null || totalCompleted === null
+            ? "Every coach that has reached Lock & Seal, by status"
+            : `${pending} pending · ${totalCompleted} completed`
+        }
+        to="/lock-seal/stages"
+      />
     </StatGrid>
   );
 }
 
 function BoardOutturnStats() {
-  const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
-  const [doneToday, setDoneToday] = useState<number | null>(null);
-  const [thisWeek, setThisWeek] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
 
   useEffect(() => {
-    getBoardOutturnWorklist().then((res) => setAwaiting(res.data.length));
+    getBoardOutturnWorklist().then((res) => setPending(res.data.length));
     getBoardOutturnList().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
-      setTotalRecords(res.data.length);
-      setDoneToday(res.data.filter((r) => r.board_outturn_datetime.slice(0, 10) === todayStr).length);
-      setThisWeek(res.data.filter((r) => withinLastWeek(r.board_outturn_datetime)).length);
+      setTotalCompleted(res.data.length);
+      setCompletedToday(res.data.filter((r) => r.board_outturn_datetime.slice(0, 10) === todayStr).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Board Outturn" value={awaiting ?? "…"} description="Lock & Seal done, pending allocation" to="/board-outturn" />
-      <StatCard icon={Landmark} color="indigo" label="Recorded Today" value={doneToday ?? "…"} description="Railway Board Outturn recorded today" to="/board-outturn/history?today=1" />
-      <StatCard icon={Landmark} color="purple" label="This Week" value={thisWeek ?? "…"} description="Board Outturn recorded, last 7 days" to="/board-outturn/history" />
-      <StatCard icon={Landmark} color="green" label="Total Board Outturn Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/board-outturn/history" />
+      <StatCard icon={Clock} color="amber" label="Pending Board Outturn" value={pending ?? "…"} description="Lock & Seal done, pending allocation" to="/board-outturn" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Railway Board Outturn recorded today" to="/board-outturn/history?today=1" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Board Outturn completions" to="/board-outturn/history" />
+      <StatCard
+        icon={Landmark}
+        color="blue"
+        label="Total Board Outturn Records"
+        value={pending === null || totalCompleted === null ? "…" : pending + totalCompleted}
+        description={
+          pending === null || totalCompleted === null
+            ? "Every coach that has reached Board Outturn, by status"
+            : `${pending} pending · ${totalCompleted} completed`
+        }
+        to="/board-outturn/stages"
+      />
     </StatGrid>
   );
 }
 
 function PhysicalDispatchStats() {
-  const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [totalRecords, setTotalRecords] = useState<number | null>(null);
-  const [doneToday, setDoneToday] = useState<number | null>(null);
-  const [thisWeek, setThisWeek] = useState<number | null>(null);
+  const [pending, setPending] = useState<number | null>(null);
+  const [completedToday, setCompletedToday] = useState<number | null>(null);
+  const [totalCompleted, setTotalCompleted] = useState<number | null>(null);
 
   useEffect(() => {
-    getPhysicalDispatchWorklist().then((res) => setAwaiting(res.data.length));
+    getPhysicalDispatchWorklist().then((res) => setPending(res.data.length));
     getPhysicalDispatchList().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
-      setTotalRecords(res.data.length);
-      setDoneToday(res.data.filter((r) => r.dispatch_datetime.slice(0, 10) === todayStr).length);
-      setThisWeek(res.data.filter((r) => withinLastWeek(r.dispatch_datetime)).length);
+      setTotalCompleted(res.data.length);
+      setCompletedToday(res.data.filter((r) => r.dispatch_datetime.slice(0, 10) === todayStr).length);
     });
   }, []);
 
   return (
     <StatGrid>
-      <StatCard icon={Clock} color="amber" label="Awaiting Dispatch" value={awaiting ?? "…"} description="Board Outturn done, pending allocation" to="/physical-dispatch" />
-      <StatCard icon={Truck} color="indigo" label="Dispatched Today" value={doneToday ?? "…"} description="Physical Dispatch recorded today" to="/physical-dispatch/history?today=1" />
-      <StatCard icon={Truck} color="purple" label="This Week" value={thisWeek ?? "…"} description="Dispatched, last 7 days" to="/physical-dispatch/history" />
-      <StatCard icon={Truck} color="blue" label="Total Dispatch Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/physical-dispatch/history" />
+      <StatCard icon={Clock} color="amber" label="Pending Dispatch" value={pending ?? "…"} description="Board Outturn done, pending allocation" to="/physical-dispatch" />
+      <StatCard icon={CheckCircle2} color="green" label="Completed Today" value={completedToday ?? "…"} description="Physical Dispatch recorded today" to="/physical-dispatch/history?today=1" />
+      <StatCard icon={ClipboardList} color="purple" label="Total Completed" value={totalCompleted ?? "…"} description="All-time Dispatch completions" to="/physical-dispatch/history" />
+      <StatCard
+        icon={Truck}
+        color="blue"
+        label="Total Dispatch Records"
+        value={pending === null || totalCompleted === null ? "…" : pending + totalCompleted}
+        description={
+          pending === null || totalCompleted === null
+            ? "Every coach that has reached Physical Dispatch, by status"
+            : `${pending} pending · ${totalCompleted} completed`
+        }
+        to="/physical-dispatch/stages"
+      />
     </StatGrid>
   );
 }
