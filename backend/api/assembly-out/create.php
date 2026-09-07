@@ -11,13 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $body = requestBody();
 $coachId = (int) ($body['coach_id'] ?? 0);
-$slotId = (int) ($body['slot_id'] ?? 0);
 $assemblyOutDate = trim($body['assembly_out_date'] ?? '');
 $assemblyOutTime = trim($body['assembly_out_time'] ?? '');
 $remarks = isset($body['remarks']) ? trim((string) $body['remarks']) : null;
 
-if ($coachId <= 0 || $slotId <= 0) {
-    Response::error('coach_id and slot_id are required.', 400);
+if ($coachId <= 0) {
+    Response::error('coach_id is required.', 400);
 }
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $assemblyOutDate)) {
     Response::error('assembly_out_date is required in YYYY-MM-DD format.', 400);
@@ -50,19 +49,6 @@ if ($stmt->fetch()) {
 }
 
 $stmt = $pdo->prepare(
-    'SELECT s.id, s.slot_number, al.id AS assembly_out_line_id, al.name AS assembly_out_line_name
-     FROM assembly_out_line_slots s
-     JOIN assembly_out_lines al ON al.id = s.assembly_out_line_id
-     LEFT JOIN assembly_out_transactions aot ON aot.slot_id = s.id
-     WHERE s.id = :slot_id AND aot.id IS NULL'
-);
-$stmt->execute(['slot_id' => $slotId]);
-$slot = $stmt->fetch();
-if (!$slot) {
-    Response::error('Selected slot is no longer available.', 409);
-}
-
-$stmt = $pdo->prepare(
     "SELECT assigned_user_id FROM coach_assignments WHERE coach_id = :coach_id AND module = 'ASSEMBLY_OUT' AND status = 'ASSIGNED'"
 );
 $stmt->execute(['coach_id' => $coachId]);
@@ -73,21 +59,27 @@ if (!$assignment || (int) $assignment['assigned_user_id'] !== (int) $currentUser
 
 $pdo->beginTransaction();
 try {
+    // No line/slot here — Assembly In and Assembly Out now share one
+    // physical line pool (assembly_in_lines). A coach keeps whatever slot
+    // it's currently in (see assembly_slot_occupancy, movable via
+    // assembly-in/move.php) all the way through to Assembly Out, which
+    // simply closes that occupancy out.
     $stmt = $pdo->prepare(
-        'INSERT INTO assembly_out_transactions
-            (coach_id, assembly_in_id, assembly_out_line_id, slot_id, assembly_out_datetime, remarks, recorded_by_user_id)
-         VALUES (:coach_id, :assembly_in_id, :assembly_out_line_id, :slot_id, :assembly_out_datetime, :remarks, :recorded_by_user_id)'
+        'INSERT INTO assembly_out_transactions (coach_id, assembly_in_id, assembly_out_datetime, remarks, recorded_by_user_id)
+         VALUES (:coach_id, :assembly_in_id, :assembly_out_datetime, :remarks, :recorded_by_user_id)'
     );
     $stmt->execute([
         'coach_id' => $coachId,
         'assembly_in_id' => $assemblyIn['id'],
-        'assembly_out_line_id' => $slot['assembly_out_line_id'],
-        'slot_id' => $slotId,
         'assembly_out_datetime' => $assemblyOutDatetime,
         'remarks' => $remarks,
         'recorded_by_user_id' => $currentUser['sub'],
     ]);
     $assemblyOutId = (int) $pdo->lastInsertId();
+
+    $pdo->prepare(
+        'UPDATE assembly_slot_occupancy SET released_at = :released_at WHERE coach_id = :coach_id AND released_at IS NULL'
+    )->execute(['released_at' => $assemblyOutDatetime, 'coach_id' => $coachId]);
 
     // Frees up this employee's Assembly Out capacity, auto-pulling their next queued coach.
     // "Assembly Operations" (a future stage between Assembly In and Assembly
@@ -100,7 +92,7 @@ try {
 } catch (PDOException $e) {
     $pdo->rollBack();
     if ($e->errorInfo[1] === 1062) {
-        Response::error('Selected slot was just taken by another user. Please choose another slot.', 409);
+        Response::error('Assembly Out was just recorded for this coach by someone else.', 409);
     }
     Response::error('Failed to record Assembly Out: ' . $e->getMessage(), 500);
 } catch (Throwable $e) {
@@ -111,7 +103,5 @@ try {
 Response::ok([
     'assembly_out_id' => $assemblyOutId,
     'coach_number' => $coach['coach_number'],
-    'assembly_out_line' => $slot['assembly_out_line_name'],
-    'slot_number' => (int) $slot['slot_number'],
     'assembly_out_datetime' => $assemblyOutDatetime,
 ], 201);

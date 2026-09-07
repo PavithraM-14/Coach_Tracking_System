@@ -27,3 +27,17 @@ export function createPaintIn(input: PaintInCreateInput): Promise<PaintInCreateR
     body: input,
   });
 }
+
+export interface MoveCoachInput {
+  coach_id: number;
+  to_slot_id: number;
+}
+
+export function movePaintCoach(
+  input: MoveCoachInput,
+): Promise<{ coach_number: string; paint_line: string; slot_number: number }> {
+  return apiRequest("/paint-in/move.php", {
+    method: "POST",
+    body: input,
+  });
+}

@@ -8,13 +8,18 @@ $pdo = Db::get();
 
 $lines = $pdo->query('SELECT id, code, name, total_slots FROM paint_lines WHERE is_active = 1 ORDER BY id')->fetchAll();
 
+// Occupancy comes from paint_slot_occupancy (released_at IS NULL = still
+// there right now), not directly from paint_in_transactions — a coach can
+// move to a different slot (see move.php) or leave via Paint Out, and the
+// permanent paint_in_transactions row never changes, so it can't tell us
+// where a coach currently sits.
 $slotRows = $pdo->query(
     "SELECT s.id AS slot_id, s.paint_line_id, s.slot_number,
-            pit.id AS paint_in_id, c.coach_number, u.full_name AS recorded_by
+            pso.id AS occupancy_id, pso.coach_id, c.coach_number, u.full_name AS recorded_by
      FROM paint_line_slots s
-     LEFT JOIN paint_in_transactions pit ON pit.slot_id = s.id
-     LEFT JOIN coaches c ON c.id = pit.coach_id
-     LEFT JOIN users u ON u.id = pit.recorded_by_user_id
+     LEFT JOIN paint_slot_occupancy pso ON pso.slot_id = s.id AND pso.released_at IS NULL
+     LEFT JOIN coaches c ON c.id = pso.coach_id
+     LEFT JOIN users u ON u.id = pso.placed_by_user_id
      ORDER BY s.paint_line_id, s.slot_number"
 )->fetchAll();
 
@@ -24,7 +29,8 @@ foreach ($slotRows as $row) {
     $slotsByLine[$lineId][] = [
         'slot_id' => (int) $row['slot_id'],
         'slot_number' => (int) $row['slot_number'],
-        'is_occupied' => $row['paint_in_id'] !== null,
+        'is_occupied' => $row['occupancy_id'] !== null,
+        'coach_id' => $row['coach_id'] !== null ? (int) $row['coach_id'] : null,
         'coach_number' => $row['coach_number'],
         'recorded_by' => $row['recorded_by'],
     ];

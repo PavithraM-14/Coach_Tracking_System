@@ -245,7 +245,7 @@ CREATE TABLE paint_in_transactions (
   coach_id INT NOT NULL UNIQUE,
   furnishing_in_id INT NOT NULL,
   paint_line_id INT NOT NULL,
-  slot_id INT NOT NULL UNIQUE,
+  slot_id INT NOT NULL, -- initial slot only (historical) — see paint_slot_occupancy for current
   paint_in_datetime DATETIME NOT NULL,
   remarks VARCHAR(255) NULL,
   recorded_by_user_id INT NOT NULL,
@@ -258,16 +258,41 @@ CREATE TABLE paint_in_transactions (
   FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
 );
 
+-- Paint In and Paint Out share one physical line pool (paint_lines /
+-- paint_line_slots) — this table is the running "which slot is this coach
+-- in right now" state, separate from the permanent paint_in_transactions
+-- record. One row per continuous stay: released_at IS NULL means still
+-- there; a coach moved via paint-in/move.php closes its old row and opens
+-- a new one, so this table doubles as the full move-history log. Paint Out
+-- just closes the currently-open row — no new row, no line/slot of its own.
+CREATE TABLE paint_slot_occupancy (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL,
+  slot_id INT NOT NULL,
+  paint_in_id INT NOT NULL,
+  placed_by_user_id INT NOT NULL,
+  occupied_from DATETIME NOT NULL,
+  released_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_coach (coach_id, released_at),
+  KEY idx_slot (slot_id, released_at),
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (slot_id) REFERENCES paint_line_slots(id),
+  FOREIGN KEY (paint_in_id) REFERENCES paint_in_transactions(id),
+  FOREIGN KEY (placed_by_user_id) REFERENCES users(id)
+);
+
 -- Paint Out: submitted by a Paint employee (paint_type_assignments.can_out)
--- once a coach's Paint In is done. Occupies its own paint_out_lines slot
--- (independent pool from Paint In's), and completing it queues the coach for
--- Assembly In.
+-- once a coach's Paint In is done. No line/slot of its own — see
+-- paint_slot_occupancy above (paint_out_line_id/slot_id are kept only for
+-- pre-merge historical rows and are no longer populated). Completing it
+-- queues the coach for Assembly In.
 CREATE TABLE paint_out_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coach_id INT NOT NULL UNIQUE,
   paint_in_id INT NOT NULL,
-  paint_out_line_id INT NOT NULL,
-  slot_id INT NOT NULL UNIQUE,
+  paint_out_line_id INT NULL,
+  slot_id INT NULL,
   paint_out_datetime DATETIME NOT NULL,
   remarks VARCHAR(255) NULL,
   recorded_by_user_id INT NOT NULL,
@@ -287,7 +312,7 @@ CREATE TABLE assembly_in_transactions (
   coach_id INT NOT NULL UNIQUE,
   paint_out_id INT NOT NULL,
   assembly_in_line_id INT NOT NULL,
-  slot_id INT NOT NULL UNIQUE,
+  slot_id INT NOT NULL, -- initial slot only (historical) — see assembly_slot_occupancy for current
   assembly_in_datetime DATETIME NOT NULL,
   remarks VARCHAR(255) NULL,
   recorded_by_user_id INT NOT NULL,
@@ -300,16 +325,38 @@ CREATE TABLE assembly_in_transactions (
   FOREIGN KEY (recorded_by_user_id) REFERENCES users(id)
 );
 
+-- Assembly In and Assembly Out share one physical line pool
+-- (assembly_in_lines / assembly_in_line_slots) — same pattern as
+-- paint_slot_occupancy above.
+CREATE TABLE assembly_slot_occupancy (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  coach_id INT NOT NULL,
+  slot_id INT NOT NULL,
+  assembly_in_id INT NOT NULL,
+  placed_by_user_id INT NOT NULL,
+  occupied_from DATETIME NOT NULL,
+  released_at DATETIME NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_coach (coach_id, released_at),
+  KEY idx_slot (slot_id, released_at),
+  FOREIGN KEY (coach_id) REFERENCES coaches(id),
+  FOREIGN KEY (slot_id) REFERENCES assembly_in_line_slots(id),
+  FOREIGN KEY (assembly_in_id) REFERENCES assembly_in_transactions(id),
+  FOREIGN KEY (placed_by_user_id) REFERENCES users(id)
+);
+
 -- Assembly Out: submitted by an ASSEMBLY_PRODUCTION employee (operation
--- ASSEMBLY_OUT) once a coach's Assembly In is done. End of the pipeline for
--- now — "Assembly Operations" (a stage between Assembly In and Assembly Out)
--- is deferred to a future phase.
+-- ASSEMBLY_OUT) once a coach's Assembly In is done. No line/slot of its own
+-- — see assembly_slot_occupancy above (assembly_out_line_id/slot_id are kept
+-- only for pre-merge historical rows and are no longer populated). End of
+-- the pipeline for now — "Assembly Operations" (a stage between Assembly In
+-- and Assembly Out) is deferred to a future phase.
 CREATE TABLE assembly_out_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   coach_id INT NOT NULL UNIQUE,
   assembly_in_id INT NOT NULL,
-  assembly_out_line_id INT NOT NULL,
-  slot_id INT NOT NULL UNIQUE,
+  assembly_out_line_id INT NULL,
+  slot_id INT NULL,
   assembly_out_datetime DATETIME NOT NULL,
   remarks VARCHAR(255) NULL,
   recorded_by_user_id INT NOT NULL,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { createAssemblyIn, getAssemblyInWorklist, getAssemblyInLines } from "../api/assemblyIn";
+import { createAssemblyIn, getAssemblyInWorklist, getAssemblyInLines, moveAssemblyCoach } from "../api/assemblyIn";
 import { getMyAssignmentSummary } from "../api/assignments";
 import type { AssignmentSummary, AssemblyInLine, WorklistCoach } from "../types";
 import { ApiError } from "../api/client";
@@ -20,6 +20,13 @@ export function AssemblyInPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // A slot already occupied by someone else's coach can be freed up by
+  // moving that coach elsewhere first — click the occupied slot to pick it
+  // up, then click an empty slot to drop it there.
+  const [movingCoach, setMovingCoach] = useState<{ coachId: number; coachNumber: string } | null>(null);
+  const [moveError, setMoveError] = useState<string | null>(null);
+  const [moving, setMoving] = useState(false);
 
   function reload() {
     getAssemblyInLines().then((res) => setLines(res.data));
@@ -73,6 +80,34 @@ export function AssemblyInPage() {
     }
   }
 
+  async function handleSlotClick(slot: AssemblyInLine["slots"][number]) {
+    if (movingCoach) {
+      if (slot.is_occupied) return; // can only drop into an empty slot
+      setMoveError(null);
+      setMoving(true);
+      try {
+        await moveAssemblyCoach({ coach_id: movingCoach.coachId, to_slot_id: slot.slot_id });
+        setMovingCoach(null);
+        reload();
+      } catch (err) {
+        setMoveError(err instanceof ApiError ? err.message : "Failed to move coach.");
+      } finally {
+        setMoving(false);
+      }
+      return;
+    }
+
+    if (slot.is_occupied) {
+      if (slot.coach_id !== null && slot.coach_number !== null) {
+        setMoveError(null);
+        setMovingCoach({ coachId: slot.coach_id, coachNumber: slot.coach_number });
+      }
+      return;
+    }
+
+    setSelectedSlotId(slot.slot_id);
+  }
+
   const selectedCoach = coaches?.find((c) => c.coach_id === selectedCoachId);
 
   return (
@@ -81,14 +116,15 @@ export function AssemblyInPage() {
       <p className="mt-1 text-sm text-slate-500">
         Each Assembly In line has a maximum capacity of 10 coaches. Coaches are auto-assigned to
         you (up to 5 at a time) once Paint Out is recorded — pick a slot for one of your assigned
-        coaches below.
+        coaches below. Need to free up a slot? Click the coach occupying it, then click an empty
+        slot to move it there.
       </p>
 
       <Link
         to="/assembly-in/history"
         className="mt-3 inline-block rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
       >
-        Assembly In Records →
+        Assembly Records →
       </Link>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -106,6 +142,23 @@ export function AssemblyInPage() {
         </span>
       </div>
 
+      {movingCoach && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
+          <span>
+            Moving coach <span className="font-semibold">{movingCoach.coachNumber}</span> — click an empty slot to
+            place it{moving && "…"}
+          </span>
+          <button
+            type="button"
+            onClick={() => setMovingCoach(null)}
+            className="font-medium text-blue-700 underline hover:text-blue-900"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
+      {moveError && <ValidationMessage kind="error" message={moveError} />}
+
       {lines && (
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {lines.map((line) => (
@@ -119,21 +172,41 @@ export function AssemblyInPage() {
                   <button
                     key={slot.slot_id}
                     type="button"
-                    disabled={slot.is_occupied}
-                    onClick={() => setSelectedSlotId(slot.slot_id)}
-                    title={slot.is_occupied ? `Occupied by ${slot.coach_number}` : `Slot ${slot.slot_number}`}
+                    disabled={moving}
+                    onClick={() => handleSlotClick(slot)}
+                    title={
+                      slot.is_occupied
+                        ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""} (click to move)`
+                        : movingCoach
+                          ? `Drop ${movingCoach.coachNumber} in slot ${slot.slot_number}`
+                          : `Slot ${slot.slot_number}`
+                    }
                     className={`rounded py-1 text-xs font-medium ${
                       slot.is_occupied
-                        ? "cursor-not-allowed bg-orange-100 text-orange-700"
+                        ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
                         : selectedSlotId === slot.slot_id
                           ? "bg-blue-600 text-white"
-                          : "bg-green-100 text-green-800 hover:bg-green-200"
+                          : movingCoach
+                            ? "bg-green-100 text-green-800 ring-2 ring-blue-400 hover:bg-green-200"
+                            : "bg-green-100 text-green-800 hover:bg-green-200"
                     }`}
                   >
                     {slot.slot_number}
                   </button>
                 ))}
               </div>
+              {line.slots.some((s) => s.is_occupied) && (
+                <div className="mt-2 space-y-0.5 border-t border-slate-100 pt-2">
+                  {line.slots
+                    .filter((s) => s.is_occupied)
+                    .map((s) => (
+                      <p key={s.slot_id} className="text-[11px] text-slate-500">
+                        Slot {s.slot_number}: <span className="font-medium text-slate-700">{s.coach_number}</span>
+                        {s.recorded_by && <> · by {s.recorded_by}</>}
+                      </p>
+                    ))}
+                </div>
+              )}
             </div>
           ))}
         </div>

@@ -53,8 +53,8 @@ $stmt = $pdo->prepare(
     'SELECT s.id, s.slot_number, pl.id AS paint_line_id, pl.name AS paint_line_name
      FROM paint_line_slots s
      JOIN paint_lines pl ON pl.id = s.paint_line_id
-     LEFT JOIN paint_in_transactions pit ON pit.slot_id = s.id
-     WHERE s.id = :slot_id AND pit.id IS NULL'
+     LEFT JOIN paint_slot_occupancy pso ON pso.slot_id = s.id AND pso.released_at IS NULL
+     WHERE s.id = :slot_id AND pso.id IS NULL'
 );
 $stmt->execute(['slot_id' => $slotId]);
 $slot = $stmt->fetch();
@@ -88,6 +88,21 @@ try {
         'recorded_by_user_id' => $currentUser['sub'],
     ]);
     $paintInId = (int) $pdo->lastInsertId();
+
+    // Opens this coach's slot-occupancy record — the running "which slot is
+    // this coach in right now" state, separate from this permanent Paint In
+    // record. Stays open (released_at NULL) until Paint Out, and can move
+    // slots (via move.php) in between without touching paint_in_transactions.
+    $pdo->prepare(
+        'INSERT INTO paint_slot_occupancy (coach_id, slot_id, paint_in_id, placed_by_user_id, occupied_from)
+         VALUES (:coach_id, :slot_id, :paint_in_id, :placed_by_user_id, :occupied_from)'
+    )->execute([
+        'coach_id' => $coachId,
+        'slot_id' => $slotId,
+        'paint_in_id' => $paintInId,
+        'placed_by_user_id' => $currentUser['sub'],
+        'occupied_from' => $paintInDatetime,
+    ]);
 
     // Frees up this employee's Paint capacity, auto-pulling their next queued coach.
     Assignment::complete($pdo, $coachId, 'PAINT');

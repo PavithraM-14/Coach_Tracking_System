@@ -215,6 +215,7 @@ export interface PaintLineSlot {
   slot_id: number;
   slot_number: number;
   is_occupied: boolean;
+  coach_id: number | null;
   coach_number: string | null;
   recorded_by: string | null;
 }
@@ -248,30 +249,9 @@ export interface PaintInListRow {
 }
 
 // Paint Out / Assembly In / Assembly Out each get their own independent
-// 10-line x 10-slot pool, structurally identical to PaintLine/PaintLineSlot
-// above — same shape, different id field name per stage.
-export interface PaintOutLineSlot {
-  slot_id: number;
-  slot_number: number;
-  is_occupied: boolean;
-  coach_number: string | null;
-  recorded_by: string | null;
-}
-
-export interface PaintOutLine {
-  paint_out_line_id: number;
-  code: string;
-  name: string;
-  total_slots: number;
-  occupied_slots: number;
-  slots: PaintOutLineSlot[];
-}
-
 export interface PaintOutCreateResponse {
   paint_out_id: number;
   coach_number: string;
-  paint_out_line: string;
-  slot_number: number;
   paint_out_datetime: string;
 }
 
@@ -279,17 +259,48 @@ export interface PaintOutListRow {
   paint_out_id: number;
   coach_number: string;
   coach_type: string;
-  paint_out_line: string;
-  slot_number: number;
+  paint_out_line: string | null;
+  slot_number: number | null;
   paint_out_datetime: string;
   recorded_by: string;
   status: string;
+}
+
+// One continuous stay in one line/slot — a coach with a single entry here
+// was never moved; more than one means it was reassigned mid-stay (see
+// paint-in/move.php / assembly-in/move.php).
+export interface LineHistoryEntry {
+  slot_number: number;
+  occupied_from: string;
+  released_at: string | null;
+  placed_by: string;
+}
+
+export interface PaintLineHistoryEntry extends LineHistoryEntry {
+  paint_line: string;
+}
+
+// Combined Paint In + Paint Out record (paint-records/list.php) — replaces
+// the separate Paint In Records / Paint Out Records pages.
+export interface PaintRecordRow {
+  paint_in_id: number;
+  coach_id: number;
+  coach_number: string;
+  coach_type: string;
+  paint_in_datetime: string;
+  paint_in_by: string;
+  paint_out_datetime: string | null;
+  paint_out_by: string | null;
+  current_line: string | null;
+  current_slot_number: number | null;
+  line_history: PaintLineHistoryEntry[];
 }
 
 export interface AssemblyInLineSlot {
   slot_id: number;
   slot_number: number;
   is_occupied: boolean;
+  coach_id: number | null;
   coach_number: string | null;
   recorded_by: string | null;
 }
@@ -322,28 +333,9 @@ export interface AssemblyInListRow {
   status: string;
 }
 
-export interface AssemblyOutLineSlot {
-  slot_id: number;
-  slot_number: number;
-  is_occupied: boolean;
-  coach_number: string | null;
-  recorded_by: string | null;
-}
-
-export interface AssemblyOutLine {
-  assembly_out_line_id: number;
-  code: string;
-  name: string;
-  total_slots: number;
-  occupied_slots: number;
-  slots: AssemblyOutLineSlot[];
-}
-
 export interface AssemblyOutCreateResponse {
   assembly_out_id: number;
   coach_number: string;
-  assembly_out_line: string;
-  slot_number: number;
   assembly_out_datetime: string;
 }
 
@@ -351,11 +343,31 @@ export interface AssemblyOutListRow {
   assembly_out_id: number;
   coach_number: string;
   coach_type: string;
-  assembly_out_line: string;
-  slot_number: number;
+  assembly_out_line: string | null;
+  slot_number: number | null;
   assembly_out_datetime: string;
   recorded_by: string;
   status: string;
+}
+
+export interface AssemblyLineHistoryEntry extends LineHistoryEntry {
+  assembly_line: string;
+}
+
+// Combined Assembly In + Assembly Out record (assembly-records/list.php) —
+// replaces the separate Assembly In Records / Assembly Out Records pages.
+export interface AssemblyRecordRow {
+  assembly_in_id: number;
+  coach_id: number;
+  coach_number: string;
+  coach_type: string;
+  assembly_in_datetime: string;
+  assembly_in_by: string;
+  assembly_out_datetime: string | null;
+  assembly_out_by: string | null;
+  current_line: string | null;
+  current_slot_number: number | null;
+  line_history: AssemblyLineHistoryEntry[];
 }
 
 export interface ApiErrorBody {

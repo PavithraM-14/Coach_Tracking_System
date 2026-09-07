@@ -24,9 +24,9 @@ import { visibleNavItems } from "../components/layout/AppShell";
 import { getShellOutturnList, getShellOutturnWorklist } from "../api/shellOutturn";
 import { getFurnishingInList, getFurnishingInWorklist } from "../api/furnishingIn";
 import { getPaintInList, getPaintInWorklist, getPaintLines } from "../api/paintIn";
-import { getPaintOutList, getPaintOutWorklist, getPaintOutLines } from "../api/paintOut";
+import { getPaintOutList, getPaintOutWorklist } from "../api/paintOut";
 import { getAssemblyInList, getAssemblyInWorklist, getAssemblyInLines } from "../api/assemblyIn";
-import { getAssemblyOutList, getAssemblyOutWorklist, getAssemblyOutLines } from "../api/assemblyOut";
+import { getAssemblyOutList, getAssemblyOutWorklist } from "../api/assemblyOut";
 import { getLocalOutturnList, getLocalOutturnWorklist } from "../api/localOutturn";
 import { getLockSealList, getLockSealWorklist } from "../api/lockSeal";
 import { getBoardOutturnList, getBoardOutturnWorklist } from "../api/boardOutturn";
@@ -374,29 +374,25 @@ function PaintInStats() {
 
 function PaintOutStats() {
   const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [available, setAvailable] = useState<number | null>(null);
+  const [thisWeek, setThisWeek] = useState<number | null>(null);
   const [totalRecords, setTotalRecords] = useState<number | null>(null);
   const [paintedToday, setPaintedToday] = useState<number | null>(null);
 
   useEffect(() => {
     getPaintOutWorklist().then((res) => setAwaiting(res.data.length));
-    getPaintOutLines().then((res) => {
-      const occ = res.data.reduce((sum, l) => sum + l.occupied_slots, 0);
-      const total = res.data.reduce((sum, l) => sum + l.total_slots, 0);
-      setAvailable(total - occ);
-    });
     getPaintOutList().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
       setTotalRecords(res.data.length);
       setPaintedToday(res.data.filter((r) => r.paint_out_datetime.slice(0, 10) === todayStr).length);
+      setThisWeek(res.data.filter((r) => withinLastWeek(r.paint_out_datetime)).length);
     });
   }, []);
 
   return (
     <StatGrid>
       <StatCard icon={Clock} color="amber" label="Awaiting Paint Out" value={awaiting ?? "…"} description="Paint In done, pending allocation" to="/paint-out" />
-      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/paint-out" />
-      <StatCard icon={ClipboardList} color="indigo" label="Painted Out Today" value={paintedToday ?? "…"} description="Paint Out recorded today" to="/paint-out/history?today=1" />
+      <StatCard icon={CheckCircle2} color="green" label="Painted Out Today" value={paintedToday ?? "…"} description="Paint Out recorded today" to="/paint-out/history?today=1" />
+      <StatCard icon={ClipboardList} color="indigo" label="This Week" value={thisWeek ?? "…"} description="Paint Out recorded, last 7 days" to="/paint-out/history" />
       <StatCard icon={PaintBucket} color="blue" label="Total Paint Out Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/paint-out/history" />
     </StatGrid>
   );
@@ -445,29 +441,25 @@ function AssemblyInStats() {
 
 function AssemblyOutStats() {
   const [awaiting, setAwaiting] = useState<number | null>(null);
-  const [available, setAvailable] = useState<number | null>(null);
+  const [thisWeek, setThisWeek] = useState<number | null>(null);
   const [totalRecords, setTotalRecords] = useState<number | null>(null);
   const [doneToday, setDoneToday] = useState<number | null>(null);
 
   useEffect(() => {
     getAssemblyOutWorklist().then((res) => setAwaiting(res.data.length));
-    getAssemblyOutLines().then((res) => {
-      const occ = res.data.reduce((sum, l) => sum + l.occupied_slots, 0);
-      const total = res.data.reduce((sum, l) => sum + l.total_slots, 0);
-      setAvailable(total - occ);
-    });
     getAssemblyOutList().then((res) => {
       const todayStr = new Date().toLocaleDateString("en-CA");
       setTotalRecords(res.data.length);
       setDoneToday(res.data.filter((r) => r.assembly_out_datetime.slice(0, 10) === todayStr).length);
+      setThisWeek(res.data.filter((r) => withinLastWeek(r.assembly_out_datetime)).length);
     });
   }, []);
 
   return (
     <StatGrid>
       <StatCard icon={Clock} color="amber" label="Awaiting Assembly Out" value={awaiting ?? "…"} description="Assembly In done, pending allocation" to="/assembly-out" />
-      <StatCard icon={CheckCircle2} color="green" label="Available Slots" value={available ?? "…"} description="Free capacity across all lines" to="/assembly-out" />
-      <StatCard icon={ClipboardList} color="indigo" label="Assembled Out Today" value={doneToday ?? "…"} description="Assembly Out recorded today" to="/assembly-out/history?today=1" />
+      <StatCard icon={CheckCircle2} color="green" label="Assembled Out Today" value={doneToday ?? "…"} description="Assembly Out recorded today" to="/assembly-out/history?today=1" />
+      <StatCard icon={ClipboardList} color="indigo" label="This Week" value={thisWeek ?? "…"} description="Assembly Out recorded, last 7 days" to="/assembly-out/history" />
       <StatCard icon={Layers} color="green" label="Total Assembly Out Records" value={totalRecords ?? "…"} description="All-time, system-wide" to="/assembly-out/history" />
     </StatGrid>
   );

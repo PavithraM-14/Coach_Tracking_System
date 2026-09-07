@@ -27,3 +27,17 @@ export function createAssemblyIn(input: AssemblyInCreateInput): Promise<Assembly
     body: input,
   });
 }
+
+export interface MoveAssemblyCoachInput {
+  coach_id: number;
+  to_slot_id: number;
+}
+
+export function moveAssemblyCoach(
+  input: MoveAssemblyCoachInput,
+): Promise<{ coach_number: string; assembly_line: string; slot_number: number }> {
+  return apiRequest("/assembly-in/move.php", {
+    method: "POST",
+    body: input,
+  });
+}

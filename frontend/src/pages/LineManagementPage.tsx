@@ -2,67 +2,43 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { PaintBucket, Wrench } from "lucide-react";
 import { createPaintIn, getPaintInWorklist, getPaintLines } from "../api/paintIn";
-import { getPaintOutLines } from "../api/paintOut";
 import { getAssemblyInLines } from "../api/assemblyIn";
-import { getAssemblyOutLines } from "../api/assemblyOut";
 import { getMyAssignmentSummary } from "../api/assignments";
-import type {
-  AssemblyInLine,
-  AssemblyOutLine,
-  AssignmentSummary,
-  PaintLine,
-  PaintOutLine,
-  WorklistCoach,
-} from "../types";
+import type { AssemblyInLine, AssignmentSummary, PaintLine, WorklistCoach } from "../types";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { FieldReadOnly } from "../components/ui/FieldReadOnly";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { DatePickerField, formatDateForDisplay } from "../components/ui/DatePickerField";
 
-// Admin's read-only view of a stage's line/slot occupancy — no allocation
-// form, since allocation is only ever done from that stage's own role page
-// (Paint Out, Assembly In, Assembly Out). Generic over the three structurally
-// identical line/slot shapes.
-function ReadOnlyLines<TLine extends { name: string; total_slots: number; occupied_slots: number }>({
-  fetchLines,
-  recordsHref,
-  recordsLabel,
-  description,
-  getKey,
-  getSlots,
-}: {
-  fetchLines: () => Promise<{ data: TLine[]; booked_count: number }>;
-  recordsHref: string;
-  recordsLabel: string;
-  description: string;
-  getKey: (line: TLine) => number;
-  getSlots: (line: TLine) => Array<{
-    slot_id: number;
-    slot_number: number;
-    is_occupied: boolean;
-    coach_number: string | null;
-    recorded_by: string | null;
-  }>;
-}) {
-  const [lines, setLines] = useState<TLine[] | null>(null);
+// Read-only view of the Assembly line pool, for anyone who doesn't do
+// Assembly In data entry themselves (Admin, Assembly Admin). Paint's
+// equivalent lives in PaintInLines below since a PAINT login can also
+// allocate from that same view.
+function AssemblyLinesView() {
+  const [lines, setLines] = useState<AssemblyInLine[] | null>(null);
   const [bookedCount, setBookedCount] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchLines().then((res) => {
+    getAssemblyInLines().then((res) => {
       setLines(res.data);
       setBookedCount(res.booked_count);
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div>
-      <p className="mt-1 text-sm text-slate-500">{description}</p>
+      <p className="mt-1 text-sm text-slate-500">
+        Read-only view of current line and slot occupancy. Allocation is performed by Assembly
+        Production role users.
+      </p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <Link to={recordsHref} className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700">
-          {recordsLabel} →
+        <Link
+          to="/assembly-in/history"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+        >
+          Assembly Records →
         </Link>
       </div>
 
@@ -83,13 +59,13 @@ function ReadOnlyLines<TLine extends { name: string; total_slots: number; occupi
       {lines && (
         <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
           {lines.map((line) => (
-            <div key={getKey(line)} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div key={line.assembly_in_line_id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
               <p className="text-sm font-semibold text-slate-800">{line.name}</p>
               <p className="text-xs text-slate-500">
                 {line.occupied_slots} / {line.total_slots} occupied
               </p>
               <div className="mt-2 grid grid-cols-5 gap-1">
-                {getSlots(line).map((slot) => (
+                {line.slots.map((slot) => (
                   <button
                     key={slot.slot_id}
                     type="button"
@@ -107,9 +83,9 @@ function ReadOnlyLines<TLine extends { name: string; total_slots: number; occupi
                   </button>
                 ))}
               </div>
-              {getSlots(line).some((s) => s.is_occupied) && (
+              {line.slots.some((s) => s.is_occupied) && (
                 <div className="mt-2 space-y-0.5 border-t border-slate-100 pt-2">
-                  {getSlots(line)
+                  {line.slots
                     .filter((s) => s.is_occupied)
                     .map((s) => (
                       <p key={s.slot_id} className="text-[11px] text-slate-500">
@@ -127,52 +103,13 @@ function ReadOnlyLines<TLine extends { name: string; total_slots: number; occupi
   );
 }
 
-function PaintOutLinesView() {
-  return (
-    <ReadOnlyLines<PaintOutLine>
-      fetchLines={getPaintOutLines}
-      recordsHref="/paint-out/history"
-      recordsLabel="Paint Out Records"
-      description="Read-only view of current line and slot occupancy. Allocation is performed by Paint role users."
-      getKey={(l) => l.paint_out_line_id}
-      getSlots={(l) => l.slots}
-    />
-  );
-}
-
-function AssemblyInLinesView() {
-  return (
-    <ReadOnlyLines<AssemblyInLine>
-      fetchLines={getAssemblyInLines}
-      recordsHref="/assembly-in/history"
-      recordsLabel="Assembly In Records"
-      description="Read-only view of current line and slot occupancy. Allocation is performed by Assembly Production role users."
-      getKey={(l) => l.assembly_in_line_id}
-      getSlots={(l) => l.slots}
-    />
-  );
-}
-
-function AssemblyOutLinesView() {
-  return (
-    <ReadOnlyLines<AssemblyOutLine>
-      fetchLines={getAssemblyOutLines}
-      recordsHref="/assembly-out/history"
-      recordsLabel="Assembly Out Records"
-      description="Read-only view of current line and slot occupancy. Allocation is performed by Assembly Production role users."
-      getKey={(l) => l.assembly_out_line_id}
-      getSlots={(l) => l.slots}
-    />
-  );
-}
-
+// Paint In and Paint Out now share one physical line pool — this is that
+// pool's view. A PAINT login gets the full allocation form (it's the same
+// page a Paint worker uses to record Paint In); everyone else viewing Line
+// Management (Admin, Paint Admin) gets a read-only grid.
 function PaintInLines() {
   const { user } = useAuth();
   const canAllocate = user?.role === "PAINT";
-  // Admin oversees every stage, so quick links to all four record pages are
-  // useful there. Paint (worker) and Paint Admin only ever deal with Paint
-  // In/Out — Assembly record links are noise for them.
-  const showAllRecordLinks = user?.role === "ADMIN";
 
   const [lines, setLines] = useState<PaintLine[] | null>(null);
   const [bookedCount, setBookedCount] = useState<number | null>(null);
@@ -259,30 +196,8 @@ function PaintInLines() {
           to="/paint-in/history"
           className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
         >
-          Paint In Records →
+          Paint Records →
         </Link>
-        <Link
-          to="/paint-out/history"
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-        >
-          Paint Out Records →
-        </Link>
-        {showAllRecordLinks && (
-          <>
-            <Link
-              to="/assembly-in/history"
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-            >
-              Assembly In Records →
-            </Link>
-            <Link
-              to="/assembly-out/history"
-              className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-            >
-              Assembly Out Records →
-            </Link>
-          </>
-        )}
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -416,24 +331,22 @@ function PaintInLines() {
   );
 }
 
+// Paint In/Out share one line pool, and so do Assembly In/Out (see Paint
+// Records / Assembly Records for the combined history) — so there's only
+// ever two pools to look at, not four.
 const TABS = [
-  { key: "paint-in", label: "Paint In Lines", icon: PaintBucket },
-  { key: "paint-out", label: "Paint Out Lines", icon: PaintBucket },
-  { key: "assembly-in", label: "Assembly In Lines", icon: Wrench },
-  { key: "assembly-out", label: "Assembly Out Lines", icon: Wrench },
+  { key: "paint", label: "Paint Lines", icon: PaintBucket },
+  { key: "assembly", label: "Assembly Lines", icon: Wrench },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
 
 export function LineManagementPage() {
   const { user } = useAuth();
-  const [tab, setTab] = useState<TabKey>("paint-in");
+  const [tab, setTab] = useState<TabKey>("paint");
 
   // Paint employees only ever do Paint In here, so they get the focused
-  // single view with no tab bar. Everyone else viewing this page is some
-  // flavor of admin, read-only across the line types their shop owns:
-  // Admin sees all four, Paint Admin sees Paint In/Out, Assembly Admin sees
-  // Assembly In/Out.
+  // single view with no tab bar.
   if (user?.role === "PAINT") {
     return (
       <div>
@@ -445,38 +358,38 @@ export function LineManagementPage() {
 
   const visibleTabs =
     user?.role === "PAINT_ADMIN"
-      ? TABS.filter((t) => t.key === "paint-in" || t.key === "paint-out")
+      ? TABS.filter((t) => t.key === "paint")
       : user?.role === "ASSEMBLY_ADMIN"
-        ? TABS.filter((t) => t.key === "assembly-in" || t.key === "assembly-out")
+        ? TABS.filter((t) => t.key === "assembly")
         : TABS;
   const activeTab = visibleTabs.some((t) => t.key === tab) ? tab : visibleTabs[0].key;
 
   return (
     <div>
       <h2 className="text-lg font-semibold text-slate-800">Line Management</h2>
-      <div className="mt-3 flex gap-1 border-b border-slate-200">
-        {visibleTabs.map((t) => {
-          const Icon = t.icon;
-          return (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setTab(t.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${
-                activeTab === t.key ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500 hover:text-slate-800"
-              }`}
-            >
-              <Icon size={15} />
-              {t.label}
-            </button>
-          );
-        })}
-      </div>
+      {visibleTabs.length > 1 && (
+        <div className="mt-3 flex gap-1 border-b border-slate-200">
+          {visibleTabs.map((t) => {
+            const Icon = t.icon;
+            return (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium ${
+                  activeTab === t.key ? "border-b-2 border-blue-600 text-blue-700" : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Icon size={15} />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {activeTab === "paint-in" && <PaintInLines />}
-      {activeTab === "paint-out" && <PaintOutLinesView />}
-      {activeTab === "assembly-in" && <AssemblyInLinesView />}
-      {activeTab === "assembly-out" && <AssemblyOutLinesView />}
+      {activeTab === "paint" && <PaintInLines />}
+      {activeTab === "assembly" && <AssemblyLinesView />}
     </div>
   );
 }

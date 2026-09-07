@@ -15,13 +15,11 @@ import { FurnishingInPage } from "./pages/FurnishingInPage";
 import { FurnishingInHistoryPage } from "./pages/FurnishingInHistoryPage";
 import { LineManagementPage } from "./pages/LineManagementPage";
 import { PaintInPage } from "./pages/PaintInPage";
-import { PaintInHistoryPage } from "./pages/PaintInHistoryPage";
 import { PaintOutPage } from "./pages/PaintOutPage";
-import { PaintOutHistoryPage } from "./pages/PaintOutHistoryPage";
 import { AssemblyInPage } from "./pages/AssemblyInPage";
-import { AssemblyInHistoryPage } from "./pages/AssemblyInHistoryPage";
 import { AssemblyOutPage } from "./pages/AssemblyOutPage";
-import { AssemblyOutHistoryPage } from "./pages/AssemblyOutHistoryPage";
+import { PaintRecordsPage } from "./pages/PaintRecordsPage";
+import { AssemblyRecordsPage } from "./pages/AssemblyRecordsPage";
 import { PaintAssignmentMatrixPage } from "./pages/PaintAssignmentMatrixPage";
 import { AssemblyAssignmentMatrixPage } from "./pages/AssemblyAssignmentMatrixPage";
 import { CoachDetailPage } from "./pages/CoachDetailPage";
@@ -170,15 +168,15 @@ function App() {
                   <Route
                     path="/paint-in/history"
                     element={
-                      <ProtectedRoute allowedRoles={["PAINT", "ADMIN"]}>
-                        <PaintInHistoryPage />
+                      <ProtectedRoute allowedRoles={["PAINT", "PAINT_ADMIN", "ADMIN"]}>
+                        <PaintRecordsPage />
                       </ProtectedRoute>
                     }
                   />
                   <Route
                     path="/admin/paint-assignments"
                     element={
-                      <ProtectedRoute allowedRoles={["ADMIN", "PAINT_ADMIN"]}>
+                      <ProtectedRoute allowedRoles={["PAINT_ADMIN"]}>
                         <PaintAssignmentMatrixPage />
                       </ProtectedRoute>
                     }
@@ -186,7 +184,7 @@ function App() {
                   <Route
                     path="/admin/assembly-assignments"
                     element={
-                      <ProtectedRoute allowedRoles={["ADMIN", "ASSEMBLY_ADMIN"]}>
+                      <ProtectedRoute allowedRoles={["ASSEMBLY_ADMIN"]}>
                         <AssemblyAssignmentMatrixPage />
                       </ProtectedRoute>
                     }
@@ -223,8 +221,8 @@ function App() {
                   <Route
                     path="/paint-out/history"
                     element={
-                      <ProtectedRoute allowedRoles={["PAINT", "ADMIN"]}>
-                        <PaintOutHistoryPage />
+                      <ProtectedRoute allowedRoles={["PAINT", "PAINT_ADMIN", "ADMIN"]}>
+                        <PaintRecordsPage />
                       </ProtectedRoute>
                     }
                   />
@@ -252,8 +250,8 @@ function App() {
                   <Route
                     path="/assembly-in/history"
                     element={
-                      <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION", "ADMIN"]}>
-                        <AssemblyInHistoryPage />
+                      <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION", "ASSEMBLY_ADMIN", "ADMIN"]}>
+                        <AssemblyRecordsPage />
                       </ProtectedRoute>
                     }
                   />
@@ -281,8 +279,8 @@ function App() {
                   <Route
                     path="/assembly-out/history"
                     element={
-                      <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION", "ADMIN"]}>
-                        <AssemblyOutHistoryPage />
+                      <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION", "ASSEMBLY_ADMIN", "ADMIN"]}>
+                        <AssemblyRecordsPage />
                       </ProtectedRoute>
                     }
                   />

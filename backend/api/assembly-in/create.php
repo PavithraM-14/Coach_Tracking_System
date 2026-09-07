@@ -53,8 +53,8 @@ $stmt = $pdo->prepare(
     'SELECT s.id, s.slot_number, al.id AS assembly_in_line_id, al.name AS assembly_in_line_name
      FROM assembly_in_line_slots s
      JOIN assembly_in_lines al ON al.id = s.assembly_in_line_id
-     LEFT JOIN assembly_in_transactions ait ON ait.slot_id = s.id
-     WHERE s.id = :slot_id AND ait.id IS NULL'
+     LEFT JOIN assembly_slot_occupancy aso ON aso.slot_id = s.id AND aso.released_at IS NULL
+     WHERE s.id = :slot_id AND aso.id IS NULL'
 );
 $stmt->execute(['slot_id' => $slotId]);
 $slot = $stmt->fetch();
@@ -88,6 +88,19 @@ try {
         'recorded_by_user_id' => $currentUser['sub'],
     ]);
     $assemblyInId = (int) $pdo->lastInsertId();
+
+    // Opens this coach's slot-occupancy record — see paint-in/create.php for
+    // the same pattern (Assembly In/Out share one physical line pool).
+    $pdo->prepare(
+        'INSERT INTO assembly_slot_occupancy (coach_id, slot_id, assembly_in_id, placed_by_user_id, occupied_from)
+         VALUES (:coach_id, :slot_id, :assembly_in_id, :placed_by_user_id, :occupied_from)'
+    )->execute([
+        'coach_id' => $coachId,
+        'slot_id' => $slotId,
+        'assembly_in_id' => $assemblyInId,
+        'placed_by_user_id' => $currentUser['sub'],
+        'occupied_from' => $assemblyInDatetime,
+    ]);
 
     // Frees up this employee's Assembly In capacity, auto-pulling their next queued coach.
     Assignment::complete($pdo, $coachId, 'ASSEMBLY_IN');
