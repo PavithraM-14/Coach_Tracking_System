@@ -66,8 +66,8 @@ $stmt = $pdo->prepare(
             pl.name AS line_name, s.slot_number
      FROM paint_out_transactions pot
      JOIN users u ON u.id = pot.recorded_by_user_id
-     JOIN paint_out_lines pl ON pl.id = pot.paint_out_line_id
-     JOIN paint_out_line_slots s ON s.id = pot.slot_id
+     LEFT JOIN paint_out_lines pl ON pl.id = pot.paint_out_line_id
+     LEFT JOIN paint_out_line_slots s ON s.id = pot.slot_id
      WHERE pot.coach_id = :coach_id"
 );
 $stmt->execute(['coach_id' => $coachId]);
@@ -90,8 +90,8 @@ $stmt = $pdo->prepare(
             al.name AS line_name, s.slot_number
      FROM assembly_out_transactions aot
      JOIN users u ON u.id = aot.recorded_by_user_id
-     JOIN assembly_out_lines al ON al.id = aot.assembly_out_line_id
-     JOIN assembly_out_line_slots s ON s.id = aot.slot_id
+     LEFT JOIN assembly_out_lines al ON al.id = aot.assembly_out_line_id
+     LEFT JOIN assembly_out_line_slots s ON s.id = aot.slot_id
      WHERE aot.coach_id = :coach_id"
 );
 $stmt->execute(['coach_id' => $coachId]);

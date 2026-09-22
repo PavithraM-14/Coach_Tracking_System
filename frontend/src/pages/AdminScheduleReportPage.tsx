@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { Workbook } from "exceljs";
-import { Download, Printer, Search } from "lucide-react";
+import { AlertCircle, Calendar, Clock, Download, Printer, Search, TrendingDown, TrendingUp } from "lucide-react";
 import {
   Bar,
   BarChart,

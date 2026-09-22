@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Circle } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, Circle, Clock } from "lucide-react";
 import { getCoachDetail } from "../api/admin";
 import type { CoachDetailResponse, ScheduleComparisonStage } from "../types";
 import { ApiError } from "../api/client";
@@ -29,6 +29,14 @@ const SCHEDULE_STATUS_LABEL: Record<ScheduleComparisonStage["status"], string> =
   pending: "Not yet due",
   reference: "Recorded",
 };
+
+function formatDate(date: string): string {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
 
 export function CoachDetailPage() {
   const { coachId } = useParams<{ coachId: string }>();
@@ -138,38 +146,117 @@ export function CoachDetailPage() {
             </div>
           </div>
 
-          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="font-semibold text-slate-800">Scheduled vs Actual</h3>
-            <p className="text-xs text-slate-400">
-              Scheduled is the rolling target (prior stage's actual date + that transition's target days) — the
-              same one shown as "Predicted Date" when each stage was submitted.
-            </p>
+          <div className="mt-6 rounded-xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 shadow-lg">
+            <div className="mb-6 text-center">
+              <h2 className="text-2xl font-bold text-slate-800">Production Analysis</h2>
+              <p className="mt-2 text-sm text-slate-600">
+                Coach No : <span className="font-semibold">{detail.coach.coach_number}</span> | Coach Name :{" "}
+                <span className="font-semibold">{detail.coach.coach_type}</span> | Shell Out :{" "}
+                <span className="font-semibold">
+                  {detail.history.find((h) => h.stage === "Shell Outturn")?.occurred_at
+                    ? formatDate(detail.history.find((h) => h.stage === "Shell Outturn")!.occurred_at.split(" ")[0])
+                    : "—"}
+                </span>
+              </p>
+            </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-4">
-              <div className="rounded-lg bg-blue-50 p-3 text-center">
-                <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Scheduled Production Days</p>
-                <p className="mt-1 text-2xl font-semibold text-blue-900">{detail.schedule.scheduled_total_days}</p>
+            {/* Timeline Headers */}
+            <div className="mb-3 grid grid-cols-12 gap-2 text-center">
+              <div className="col-span-3 rounded-lg bg-slate-700 py-3 text-sm font-bold uppercase text-white">
+                Scheduled Date
               </div>
-              <div className="rounded-lg bg-slate-50 p-3 text-center">
-                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Live Production Days</p>
-                <p className="mt-1 text-2xl font-semibold text-slate-800">{detail.schedule.actual_total_days ?? "—"}</p>
+              <div className="col-span-6 rounded-lg bg-slate-700 py-3 text-sm font-bold uppercase text-white">
+                Production Stage
+              </div>
+              <div className="col-span-3 rounded-lg bg-slate-700 py-3 text-sm font-bold uppercase text-white">
+                Production Date
               </div>
             </div>
 
-            <div className="mt-4 space-y-2">
-              {detail.schedule.stages.map((stage) => (
-                <div key={stage.key} className="flex items-center gap-3 rounded-lg border border-slate-100 px-3 py-2">
-                  <p className="w-40 flex-shrink-0 text-sm font-medium text-slate-700">{stage.label}</p>
-                  {stage.scheduled_date && (
-                    <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                      Scheduled: {stage.scheduled_date}
-                    </span>
-                  )}
-                  <span className={`rounded px-2 py-0.5 text-xs font-medium ${SCHEDULE_STATUS_STYLE[stage.status]}`}>
-                    {stage.actual_date ? `Actual: ${stage.actual_date}` : SCHEDULE_STATUS_LABEL[stage.status]}
-                  </span>
+            {/* Timeline Rows - Exclude Shell Outturn */}
+            <div className="space-y-2">
+              {detail.schedule.stages
+                .filter((stage) => stage.label !== "Shell Outturn")
+                .map((stage, idx) => {
+                  const bgColor =
+                    stage.status === "on_time"
+                      ? "bg-green-50"
+                      : stage.status === "delayed" || stage.status === "overdue"
+                        ? "bg-red-50"
+                        : "bg-slate-50";
+
+                  return (
+                    <div key={stage.key} className={`grid grid-cols-12 gap-2 rounded-lg ${bgColor} p-3 transition-all`}>
+                      {/* Scheduled Date */}
+                      <div className="col-span-3 flex items-center justify-center">
+                        <span className="rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm">
+                          {stage.scheduled_date ? formatDate(stage.scheduled_date) : "—"}
+                        </span>
+                      </div>
+
+                      {/* Production Stage Bar */}
+                      <div className="col-span-6 flex items-center">
+                        <div className="relative w-full">
+                          <div
+                            className="flex items-center justify-center rounded-lg bg-gradient-to-r from-blue-600 to-blue-500 py-3 text-sm font-semibold text-white shadow-md"
+                            style={{
+                              width: stage.status === "pending" ? "70%" : "100%",
+                            }}
+                          >
+                            {stage.label}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Production Date */}
+                      <div className="col-span-3 flex items-center justify-center">
+                        {stage.actual_date ? (
+                          <span
+                            className={`rounded-md px-3 py-1.5 text-sm font-medium shadow-sm ${
+                              stage.status === "on_time"
+                                ? "bg-green-600 text-white"
+                                : stage.status === "delayed" || stage.status === "overdue"
+                                  ? "bg-red-600 text-white"
+                                  : "bg-slate-600 text-white"
+                            }`}
+                          >
+                            {formatDate(stage.actual_date)}
+                          </span>
+                        ) : (
+                          <span
+                            className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+                              stage.status === "overdue"
+                                ? "bg-red-100 text-red-700"
+                                : "bg-slate-200 text-slate-600"
+                            }`}
+                          >
+                            {stage.status === "overdue" ? "Overdue" : "—"}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+
+            {/* Summary Cards */}
+            <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 p-6 text-center shadow-md">
+                <div className="flex items-center justify-center gap-2">
+                  <Calendar className="text-blue-600" size={24} />
+                  <p className="text-sm font-medium uppercase text-blue-700">Scheduled Production Days</p>
                 </div>
-              ))}
+                <p className="mt-3 text-5xl font-bold text-blue-800">{detail.schedule.scheduled_total_days}</p>
+              </div>
+              <div className="rounded-xl bg-gradient-to-br from-indigo-50 to-indigo-100 p-6 text-center shadow-md">
+                <div className="flex items-center justify-center gap-2">
+                  <Clock className="text-indigo-600" size={24} />
+                  <p className="text-sm font-medium uppercase text-indigo-700">Live Production Days</p>
+                </div>
+                <p className="mt-3 text-5xl font-bold text-indigo-800">
+                  {detail.schedule.actual_total_days ?? "—"}
+                </p>
+              </div>
             </div>
           </div>
 
