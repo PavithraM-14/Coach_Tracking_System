@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createLocalOutturn, getLocalOutturnWorklist } from "../api/localOutturn";
+import { createLocalOutturn, getLocalOutturnWorklist, type RailwayCode } from "../api/localOutturn";
 import { getMyAssignmentSummary } from "../api/assignments";
 import type { AssignmentSummary, LocalOutturnWorklistCoach } from "../types";
 import { ApiError } from "../api/client";
@@ -19,6 +19,7 @@ export function LocalOutturnPage() {
   const [selectedCoachId, setSelectedCoachId] = useState<number | "">("");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [serialNo, setSerialNo] = useState("");
+  const [railway, setRailway] = useState<RailwayCode | "">("");
   const [remarks, setRemarks] = useState("");
   const [fieldError, setFieldError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -62,7 +63,11 @@ export function LocalOutturnPage() {
       return;
     }
     if (!serialNo.trim()) {
-      setFieldError("Outturn Serial No. is required.");
+      setFieldError("Railway Serial No. is required.");
+      return;
+    }
+    if (!railway) {
+      setFieldError("Select a railway.");
       return;
     }
 
@@ -74,6 +79,7 @@ export function LocalOutturnPage() {
         local_outturn_time: "00:00",
         remarks: remarks || undefined,
         outturn_serial_no: serialNo.trim(),
+        railway,
       });
       setSuccess(
         `Local Outturn recorded for coach ${result.coach_number} on ${result.local_outturn_datetime.slice(0, 10)} — now eligible for Lock & Seal.`,
@@ -81,6 +87,7 @@ export function LocalOutturnPage() {
       setSelectedCoachId("");
       setDate(undefined);
       setSerialNo("");
+      setRailway("");
       setRemarks("");
       reload();
     } catch (err) {
@@ -143,14 +150,27 @@ export function LocalOutturnPage() {
       </div>
 
       <div className="mt-4 max-w-xs">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Outturn Serial No.</p>
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Railway Serial No.</p>
         <input
           type="text"
           value={serialNo}
           onChange={(e) => setSerialNo(e.target.value)}
-          placeholder="e.g. OT-2026-00123"
+          placeholder="e.g. RS-2026-00123"
           className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />
+      </div>
+
+      <div className="mt-4 max-w-xs">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Railway</p>
+        <select
+          value={railway}
+          onChange={(e) => setRailway(e.target.value as RailwayCode | "")}
+          className="mt-0.5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        >
+          <option value="">Select a railway</option>
+          <option value="ICF">ICF</option>
+          <option value="SR">SR</option>
+        </select>
       </div>
       {fieldError && <ValidationMessage kind="error" message={fieldError} />}
 

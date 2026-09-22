@@ -146,6 +146,7 @@ export interface LocalOutturnCreateResponse {
   coach_number: string;
   local_outturn_datetime: string;
   outturn_serial_no: string;
+  railway: string;
 }
 
 export interface LocalOutturnListRow {
@@ -156,11 +157,13 @@ export interface LocalOutturnListRow {
   recorded_by: string;
   status: string;
   outturn_serial_no: string | null;
+  railway: string | null;
 }
 
 export interface LockSealWorklistCoach extends WorklistCoach {
   local_outturn_datetime: string;
   outturn_serial_no: string | null;
+  railway: string | null;
 }
 
 export interface LockSealCreateResponse {
@@ -177,11 +180,13 @@ export interface LockSealListRow {
   recorded_by: string;
   status: string;
   outturn_serial_no: string | null;
+  railway: string | null;
 }
 
 export interface BoardOutturnWorklistCoach extends WorklistCoach {
   lock_seal_datetime: string;
   outturn_serial_no: string | null;
+  railway: string | null;
 }
 
 export interface BoardOutturnCreateResponse {
@@ -198,11 +203,13 @@ export interface BoardOutturnListRow {
   recorded_by: string;
   status: string;
   outturn_serial_no: string | null;
+  railway: string | null;
 }
 
 export interface PhysicalDispatchWorklistCoach extends WorklistCoach {
   board_outturn_datetime: string;
   outturn_serial_no: string | null;
+  railway: string | null;
 }
 
 export interface PhysicalDispatchCreateResponse {
@@ -219,6 +226,15 @@ export interface PhysicalDispatchListRow {
   recorded_by: string;
   status: string;
   outturn_serial_no: string | null;
+  railway: string | null;
+}
+
+export interface LineBlockLogRow {
+  pool: "PAINT_LINE" | "PAINT_SLOT" | "ASSEMBLY_LINE" | "ASSEMBLY_SLOT";
+  target_label: string;
+  action: "BLOCK" | "UNBLOCK";
+  performed_by: string;
+  created_at: string;
 }
 
 export interface PaintLineSlot {
@@ -448,11 +464,47 @@ export interface CoachDetailHistoryEntry {
   location?: string;
 }
 
+// One stage's Scheduled-vs-Actual comparison — see backend/lib/ScheduleReport.php.
+export interface ScheduleComparisonStage {
+  key: string;
+  label: string;
+  scheduled_date: string | null;
+  actual_date: string | null;
+  status: "on_time" | "delayed" | "pending" | "overdue" | "reference";
+}
+
+export interface ScheduleComparison {
+  stages: ScheduleComparisonStage[];
+  scheduled_total_days: number;
+  actual_total_days: number | null;
+}
+
 export interface CoachDetailResponse {
   coach: CoachDetailInfo;
   location: CoachDetailLocation;
   stages: CoachDetailStage[];
   history: CoachDetailHistoryEntry[];
+  schedule: ScheduleComparison;
+}
+
+export interface ScheduleReportRow {
+  coach_id: number;
+  coach_number: string;
+  coach_type: string;
+  shell_outturn_date: string | null;
+  stages: ScheduleComparisonStage[];
+  scheduled_total_days: number;
+  actual_total_days: number | null;
+}
+
+export interface NotificationRow {
+  id: number;
+  type: "COACH_ASSIGNED" | "COACH_COMPLETED";
+  coach_id: number;
+  coach_number: string;
+  message: string;
+  is_read: boolean;
+  created_at: string;
 }
 
 export interface AdminDashboardStats {

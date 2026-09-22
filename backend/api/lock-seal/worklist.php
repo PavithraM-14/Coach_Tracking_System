@@ -12,6 +12,7 @@ $stmt = $pdo->prepare(
             po.bo_number, po.bo_item, po.installation_no,
             prior.local_outturn_datetime AS local_outturn_datetime,
             prior.outturn_serial_no AS outturn_serial_no,
+            prior.railway AS railway,
             fs.local_outturn_to_dispatch_days
      FROM coach_assignments ca
      JOIN coaches c ON c.id = ca.coach_id
@@ -42,6 +43,7 @@ $data = array_map(function ($row) {
         'installation_no' => $row['installation_no'],
         'local_outturn_datetime' => $row['local_outturn_datetime'],
         'outturn_serial_no' => $row['outturn_serial_no'],
+        'railway' => $row['railway'],
         'predicted_date' => Schedule::addDays(
             $row['local_outturn_datetime'],
             $row['local_outturn_to_dispatch_days'] !== null ? (int) $row['local_outturn_to_dispatch_days'] : null

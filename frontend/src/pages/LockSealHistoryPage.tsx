@@ -105,7 +105,8 @@ export function LockSealHistoryPage() {
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
                 <th className="px-4 py-2">Coach No.</th>
-                <th className="px-4 py-2">Serial No.</th>
+                <th className="px-4 py-2">Railway Serial No.</th>
+                <th className="px-4 py-2">Railway</th>
                 <th className="px-4 py-2">Coach Type</th>
                 <th className="px-4 py-2">Lock & Seal Date</th>
                 <th className="px-4 py-2">Recorded By</th>
@@ -118,6 +119,7 @@ export function LockSealHistoryPage() {
                   <tr key={row.lock_seal_id}>
                     <td className="px-4 py-2 font-medium text-slate-800">{row.coach_number}</td>
                     <td className="px-4 py-2">{row.outturn_serial_no ?? "—"}</td>
+                    <td className="px-4 py-2">{row.railway ?? "—"}</td>
                     <td className="px-4 py-2">{row.coach_type}</td>
                     <td className="px-4 py-2">
                       {formatDateOnly(row.lock_seal_datetime)}

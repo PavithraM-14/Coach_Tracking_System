@@ -8,7 +8,9 @@ import type {
   OperationCode,
   ProductionOrderCreateResponse,
   ProductionOrderRow,
+  LineBlockLogRow,
   RoleOption,
+  ScheduleReportRow,
   ScheduleRow,
   Skill,
 } from "../types";
@@ -161,4 +163,12 @@ export function renameCoachCategory(categoryId: number, name: string): Promise<{
     method: "POST",
     body: { category_id: categoryId, name },
   });
+}
+
+export function getScheduleReport(q?: string): Promise<{ data: ScheduleReportRow[] }> {
+  return apiRequest(`/admin/schedule_report.php${q ? `?q=${encodeURIComponent(q)}` : ""}`);
+}
+
+export function getLineBlockLog(poolFamily: "PAINT" | "ASSEMBLY"): Promise<{ data: LineBlockLogRow[] }> {
+  return apiRequest(`/admin/line_block_log.php?pool=${poolFamily}`);
 }

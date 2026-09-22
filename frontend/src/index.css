@@ -9,3 +9,11 @@ body {
   font-family: system-ui, "Segoe UI", Roboto, sans-serif;
   background: #f3f4f6;
 }
+
+/* Wide report tables (e.g. Schedule Report) need landscape to avoid getting
+   cut off — the sidebar/header are hidden separately via print:hidden. */
+@media print {
+  @page {
+    size: landscape;
+  }
+}

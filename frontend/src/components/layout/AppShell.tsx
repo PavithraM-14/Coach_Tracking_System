@@ -20,11 +20,14 @@ import {
   Wrench,
   Building2,
   CalendarClock,
+  BarChart3,
+  ArrowLeftRight,
   type LucideIcon,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import type { RoleCode } from "../../types";
 import railwaysLogo from "../../assets/indian-railways-logo.svg";
+import { NotificationBell } from "./NotificationBell";
 
 interface NavItem {
   to: string;
@@ -46,6 +49,7 @@ interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { to: "/admin/production-orders", label: "Production Orders", icon: FileText, roles: ["ADMIN"] },
   { to: "/admin/schedule", label: "Target Schedule", icon: CalendarClock, roles: ["ADMIN"] },
+  { to: "/admin/reports/schedule", label: "Schedule Report", icon: BarChart3, roles: ["ADMIN"] },
   { to: "/admin/users", label: "User Management", icon: Users, roles: ["ADMIN", "PAINT_ADMIN", "ASSEMBLY_ADMIN"] },
   { to: "/admin/paint-assignments", label: "Paint Assignments", icon: LayoutGrid, roles: ["PAINT_ADMIN"] },
   { to: "/admin/assembly-assignments", label: "Assembly Assignments", icon: LayoutGrid, roles: ["ASSEMBLY_ADMIN"] },
@@ -57,10 +61,12 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/furnishing-in", label: "Furnishing In", icon: PackageCheck, roles: ["FURNISHING"], module: "FURNISHING" },
   { to: "/paint-in/pending", label: "Paint In Pending", icon: Clock, roles: ["PAINT"], module: "PAINT" },
   { to: "/paint-in", label: "Paint In", icon: PaintBucket, roles: ["PAINT"], module: "PAINT" },
+  { to: "/paint-in/move", label: "Move Coach (Paint)", icon: ArrowLeftRight, roles: ["PAINT"], module: "PAINT" },
   { to: "/paint-out/pending", label: "Paint Out Pending", icon: Clock, roles: ["PAINT"], module: "PAINT_OUT" },
   { to: "/paint-out", label: "Paint Out", icon: PaintBucket, roles: ["PAINT"], module: "PAINT_OUT" },
   { to: "/assembly-in/pending", label: "Assembly In Pending", icon: Clock, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_IN" },
   { to: "/assembly-in", label: "Assembly In", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_IN" },
+  { to: "/assembly-in/move", label: "Move Coach (Assembly)", icon: ArrowLeftRight, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_IN" },
   { to: "/assembly-out/pending", label: "Assembly Out Pending", icon: Clock, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_OUT" },
   { to: "/assembly-out", label: "Assembly Out", icon: Layers, roles: ["ASSEMBLY_PRODUCTION"], module: "ASSEMBLY_OUT" },
   {
@@ -104,9 +110,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-slate-50 print:block print:h-auto print:overflow-visible">
       <aside
-        className={`flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white transition-all duration-200 ${
+        className={`flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-slate-200 bg-white transition-all duration-200 print:hidden ${
           sidebarOpen ? "w-60" : "w-0 border-r-0"
         }`}
       >
@@ -157,8 +163,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex h-screen flex-1 flex-col overflow-hidden">
-        <header className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3">
+      <div className="flex h-screen flex-1 flex-col overflow-hidden print:h-auto print:overflow-visible">
+        <header className="flex flex-shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 print:hidden">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -175,25 +181,28 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </div>
           {user && (
-            <Link to="/profile" title="My Profile" className="flex flex-shrink-0 items-center gap-3">
-              <div className="hidden text-right sm:block">
-                <p className="text-sm font-medium text-slate-800">
-                  Welcome, <span className="font-semibold">{user.full_name}</span>
-                </p>
-                <p className="text-xs text-slate-500">{user.role}</p>
-              </div>
-              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
-                {user.full_name
-                  .split(" ")
-                  .map((part) => part[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase()}
-              </span>
-            </Link>
+            <div className="flex flex-shrink-0 items-center gap-1">
+              <NotificationBell />
+              <Link to="/profile" title="My Profile" className="flex flex-shrink-0 items-center gap-3">
+                <div className="hidden text-right sm:block">
+                  <p className="text-sm font-medium text-slate-800">
+                    Welcome, <span className="font-semibold">{user.full_name}</span>
+                  </p>
+                  <p className="text-xs text-slate-500">{user.role}</p>
+                </div>
+                <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">
+                  {user.full_name
+                    .split(" ")
+                    .map((part) => part[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
+                </span>
+              </Link>
+            </div>
           )}
         </header>
-        <main className="flex-1 overflow-y-auto overflow-x-auto px-6 py-6">{children}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-auto px-6 py-6 print:overflow-visible print:p-0">{children}</main>
       </div>
     </div>
   );

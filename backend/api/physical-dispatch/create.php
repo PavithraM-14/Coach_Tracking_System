@@ -75,6 +75,7 @@ try {
     // Frees up this employee's Physical Dispatch queue, auto-pulling their next queued coach.
     // End of the pipeline.
     Assignment::complete($pdo, $coachId, 'PHYSICAL_DISPATCH');
+    Notify::coachCompleted($pdo, $coachId);
 
     $pdo->commit();
 } catch (PDOException $e) {

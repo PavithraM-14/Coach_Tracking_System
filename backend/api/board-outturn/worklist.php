@@ -12,6 +12,7 @@ $stmt = $pdo->prepare(
             po.bo_number, po.bo_item, po.installation_no,
             prior.lock_seal_datetime AS lock_seal_datetime,
             lor.outturn_serial_no AS outturn_serial_no,
+            lor.railway AS railway,
             lor.local_outturn_datetime AS local_outturn_datetime,
             fs.local_outturn_to_dispatch_days
      FROM coach_assignments ca
@@ -44,6 +45,7 @@ $data = array_map(function ($row) {
         'installation_no' => $row['installation_no'],
         'lock_seal_datetime' => $row['lock_seal_datetime'],
         'outturn_serial_no' => $row['outturn_serial_no'],
+        'railway' => $row['railway'],
         'predicted_date' => Schedule::addDays(
             $row['local_outturn_datetime'],
             $row['local_outturn_to_dispatch_days'] !== null ? (int) $row['local_outturn_to_dispatch_days'] : null

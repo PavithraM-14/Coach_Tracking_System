@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Circle } from "lucide-react";
 import { getCoachDetail } from "../api/admin";
-import type { CoachDetailResponse } from "../types";
+import type { CoachDetailResponse, ScheduleComparisonStage } from "../types";
 import { ApiError } from "../api/client";
 import { FieldReadOnly } from "../components/ui/FieldReadOnly";
 import { formatDateTime } from "../utils/dateFormat";
@@ -12,6 +12,22 @@ const LOCATION_COLOR: Record<string, string> = {
   QUEUED: "bg-amber-100 text-amber-700",
   ASSIGNED: "bg-blue-100 text-blue-700",
   COMPLETED: "bg-green-100 text-green-700",
+};
+
+const SCHEDULE_STATUS_STYLE: Record<ScheduleComparisonStage["status"], string> = {
+  on_time: "bg-green-100 text-green-700",
+  delayed: "bg-red-100 text-red-700",
+  overdue: "bg-red-100 text-red-700",
+  pending: "bg-amber-100 text-amber-700",
+  reference: "bg-indigo-100 text-indigo-700",
+};
+
+const SCHEDULE_STATUS_LABEL: Record<ScheduleComparisonStage["status"], string> = {
+  on_time: "On time",
+  delayed: "Delayed",
+  overdue: "Overdue",
+  pending: "Not yet due",
+  reference: "Recorded",
 };
 
 export function CoachDetailPage() {
@@ -119,6 +135,41 @@ export function CoachDetailPage() {
             <div className="mt-6 rounded-lg bg-blue-50 p-4 text-sm">
               <p className="font-medium text-blue-900">Current Status</p>
               <p className="mt-0.5 text-blue-800">{detail.location.label}</p>
+            </div>
+          </div>
+
+          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <h3 className="font-semibold text-slate-800">Scheduled vs Actual</h3>
+            <p className="text-xs text-slate-400">
+              Scheduled is the rolling target (prior stage's actual date + that transition's target days) — the
+              same one shown as "Predicted Date" when each stage was submitted.
+            </p>
+
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="rounded-lg bg-blue-50 p-3 text-center">
+                <p className="text-xs font-medium uppercase tracking-wide text-blue-700">Scheduled Production Days</p>
+                <p className="mt-1 text-2xl font-semibold text-blue-900">{detail.schedule.scheduled_total_days}</p>
+              </div>
+              <div className="rounded-lg bg-slate-50 p-3 text-center">
+                <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Live Production Days</p>
+                <p className="mt-1 text-2xl font-semibold text-slate-800">{detail.schedule.actual_total_days ?? "—"}</p>
+              </div>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {detail.schedule.stages.map((stage) => (
+                <div key={stage.key} className="flex items-center gap-3 rounded-lg border border-slate-100 px-3 py-2">
+                  <p className="w-40 flex-shrink-0 text-sm font-medium text-slate-700">{stage.label}</p>
+                  {stage.scheduled_date && (
+                    <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                      Scheduled: {stage.scheduled_date}
+                    </span>
+                  )}
+                  <span className={`rounded px-2 py-0.5 text-xs font-medium ${SCHEDULE_STATUS_STYLE[stage.status]}`}>
+                    {stage.actual_date ? `Actual: ${stage.actual_date}` : SCHEDULE_STATUS_LABEL[stage.status]}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 

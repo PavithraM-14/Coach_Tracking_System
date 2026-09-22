@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { createPaintIn, getPaintInWorklist, getPaintLines, movePaintCoach, type VendorCode } from "../api/paintIn";
+import { createPaintIn, getPaintInWorklist, getPaintLines, type VendorCode } from "../api/paintIn";
 import { getMyAssignmentSummary } from "../api/assignments";
 import type { AssignmentSummary, PaintLine, WorklistCoach } from "../types";
 import { ApiError } from "../api/client";
@@ -22,14 +22,6 @@ export function PaintInPage() {
   const [apiError, setApiError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  // A slot already occupied by someone else's coach can be freed up by
-  // moving that coach elsewhere first (e.g. a slot is needed for a coach
-  // that's a higher priority that day) — click the occupied slot to pick
-  // it up, then click an empty slot to drop it there.
-  const [movingCoach, setMovingCoach] = useState<{ coachId: number; coachNumber: string } | null>(null);
-  const [moveError, setMoveError] = useState<string | null>(null);
-  const [moving, setMoving] = useState(false);
 
   function reload() {
     getPaintLines().then((res) => setLines(res.data));
@@ -90,37 +82,6 @@ export function PaintInPage() {
     }
   }
 
-  function beginMove(slot: { coach_id: number | null; coach_number: string | null }) {
-    if (slot.coach_id === null || slot.coach_number === null) return;
-    setMoveError(null);
-    setSelectedLineId("");
-    setSelectedSlotId("");
-    setMovingCoach({ coachId: slot.coach_id, coachNumber: slot.coach_number });
-  }
-
-  async function handleConfirmMove() {
-    if (!movingCoach || !selectedSlotId) return;
-    setMoveError(null);
-    setMoving(true);
-    try {
-      await movePaintCoach({ coach_id: movingCoach.coachId, to_slot_id: selectedSlotId });
-      setMovingCoach(null);
-      setSelectedLineId("");
-      setSelectedSlotId("");
-      reload();
-    } catch (err) {
-      setMoveError(err instanceof ApiError ? err.message : "Failed to move coach.");
-    } finally {
-      setMoving(false);
-    }
-  }
-
-  const occupiedSlots = (lines ?? []).flatMap((line) =>
-    line.slots
-      .filter((s) => s.is_occupied)
-      .map((s) => ({ line, slot: s })),
-  );
-
   const selectedCoach = coaches?.find((c) => c.coach_id === selectedCoachId);
   const slotsInSelectedLine =
     lines?.find((l) => l.paint_line_id === selectedLineId)?.slots.filter((s) => !s.is_occupied) ?? [];
@@ -131,16 +92,23 @@ export function PaintInPage() {
       <p className="mt-1 text-sm text-slate-500">
         Each paint line has a maximum capacity of 10 coaches. Coaches are auto-assigned to you (up
         to 5 at a time) once Furnishing In is recorded — use the Line/Slot dropdowns below to pick a
-        spot. Need to free up a slot? Tap "Move" next to the occupied coach, pick a destination
-        line/slot above, then tap "Move Coach" to confirm.
+        spot.
       </p>
 
-      <Link
-        to="/paint-in/history"
-        className="mt-3 inline-block rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
-      >
-        Paint Records →
-      </Link>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Link
+          to="/paint-in/history"
+          className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+        >
+          Paint Records →
+        </Link>
+        <Link
+          to="/paint-in/move"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          Move a coach between slots →
+        </Link>
+      </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {summary && (
@@ -150,23 +118,6 @@ export function PaintInPage() {
           </span>
         )}
       </div>
-
-      {movingCoach && (
-        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
-          <span>
-            Moving coach <span className="font-semibold">{movingCoach.coachNumber}</span> — pick a destination
-            line/slot below, then tap "Move Coach"{moving && "…"}
-          </span>
-          <button
-            type="button"
-            onClick={() => setMovingCoach(null)}
-            className="font-medium text-blue-700 underline hover:text-blue-900"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
-      {moveError && <ValidationMessage kind="error" message={moveError} />}
 
       <div className="mt-4 grid max-w-xl grid-cols-2 gap-3">
         <div>
@@ -211,53 +162,6 @@ export function PaintInPage() {
           </select>
         </div>
       </div>
-
-      {movingCoach && (
-        <button
-          type="button"
-          onClick={handleConfirmMove}
-          disabled={!selectedSlotId || moving}
-          className="mt-3 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
-          {moving ? "Moving..." : "Move Coach"}
-        </button>
-      )}
-
-      {occupiedSlots.length > 0 && (
-        <div className="mt-4 max-w-xl overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-3 py-2">Line</th>
-                <th className="px-3 py-2">Slot</th>
-                <th className="px-3 py-2">Coach</th>
-                <th className="px-3 py-2">By</th>
-                <th className="px-3 py-2" />
-              </tr>
-            </thead>
-            <tbody>
-              {occupiedSlots.map(({ line, slot }) => (
-                <tr key={slot.slot_id} className="border-b border-slate-50 last:border-0">
-                  <td className="px-3 py-2 text-slate-700">{line.name}</td>
-                  <td className="px-3 py-2 text-slate-700">{slot.slot_number}</td>
-                  <td className="px-3 py-2 font-medium text-slate-800">{slot.coach_number}</td>
-                  <td className="px-3 py-2 text-slate-500">{slot.recorded_by ?? "—"}</td>
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      type="button"
-                      disabled={moving || (movingCoach?.coachId === slot.coach_id)}
-                      onClick={() => beginMove(slot)}
-                      className="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-40"
-                    >
-                      Move
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
 
       <div className="mt-6 max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Coach (assigned to you)</p>

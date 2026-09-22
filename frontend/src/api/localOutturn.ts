@@ -9,12 +9,15 @@ export function getLocalOutturnWorklist(): Promise<{ data: LocalOutturnWorklistC
   return apiRequest("/local-outturn/worklist.php");
 }
 
+export type RailwayCode = "ICF" | "SR";
+
 export interface LocalOutturnCreateInput {
   coach_id: number;
   local_outturn_date: string; // YYYY-MM-DD
   local_outturn_time: string; // HH:MM
   remarks?: string;
   outturn_serial_no: string;
+  railway: RailwayCode;
 }
 
 export function createLocalOutturn(input: LocalOutturnCreateInput): Promise<LocalOutturnCreateResponse> {

@@ -13,7 +13,7 @@ if ($coachId <= 0) {
 $pdo = Db::get();
 
 $stmt = $pdo->prepare(
-    'SELECT c.id AS coach_id, c.coach_number, c.serial_no,
+    'SELECT c.id AS coach_id, c.coach_number, c.serial_no, c.coach_type_id,
             ct.name AS coach_type, cc.name AS coach_category,
             p.name AS plant, py.year_code AS production_year,
             po.bo_number, po.bo_item, po.installation_no
@@ -230,7 +230,30 @@ if ($currentStageKey === null) {
     }
 }
 
+$scheduleStmt = $pdo->prepare(
+    'SELECT shell_to_furnishing_days, furnishing_to_paint_in_days, paint_in_to_paint_out_days,
+            paint_out_to_assembly_in_days, assembly_in_to_assembly_out_days,
+            assembly_out_to_local_outturn_days, local_outturn_to_dispatch_days
+     FROM fixed_schedules WHERE coach_type_id = :coach_type_id'
+);
+$scheduleStmt->execute(['coach_type_id' => $coach['coach_type_id']]);
+$scheduleDays = $scheduleStmt->fetch() ?: null;
+
+$comparison = ScheduleReport::compare([
+    'SHELL_OUTTURN' => $shellOutturn['occurred_at'] ?? null,
+    'FURNISHING_IN' => $furnishingIn['occurred_at'] ?? null,
+    'PAINT_IN' => $paintIn['occurred_at'] ?? null,
+    'PAINT_OUT' => $paintOut['occurred_at'] ?? null,
+    'ASSEMBLY_IN' => $assemblyIn['occurred_at'] ?? null,
+    'ASSEMBLY_OUT' => $assemblyOut['occurred_at'] ?? null,
+    'LOCAL_OUTTURN' => $localOutturn['occurred_at'] ?? null,
+    'LOCK_SEAL' => $lockSeal['occurred_at'] ?? null,
+    'BOARD_OUTTURN' => $boardOutturn['occurred_at'] ?? null,
+    'PHYSICAL_DISPATCH' => $physicalDispatch['occurred_at'] ?? null,
+], $scheduleDays);
+
 Response::ok([
+    'schedule' => $comparison,
     'coach' => [
         'coach_id' => (int) $coach['coach_id'],
         'coach_number' => $coach['coach_number'],

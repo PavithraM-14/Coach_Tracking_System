@@ -2,7 +2,7 @@
 
 require_once __DIR__ . '/../../bootstrap.php';
 
-Auth::requireRole(['ADMIN', 'PAINT_ADMIN']);
+$currentUser = Auth::requireRole(['ADMIN', 'PAINT_ADMIN']);
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     Response::error('Method not allowed.', 405);
@@ -18,13 +18,15 @@ if ($lineId <= 0) {
 
 $pdo = Db::get();
 
-$stmt = $pdo->prepare('SELECT id FROM paint_lines WHERE id = :id');
+$stmt = $pdo->prepare('SELECT id, name FROM paint_lines WHERE id = :id');
 $stmt->execute(['id' => $lineId]);
-if (!$stmt->fetch()) {
+$line = $stmt->fetch();
+if (!$line) {
     Response::error('Paint line not found.', 404);
 }
 
 $pdo->prepare('UPDATE paint_lines SET is_active = :is_active WHERE id = :id')
     ->execute(['is_active' => $isActive ? 1 : 0, 'id' => $lineId]);
+BlockLog::record($pdo, 'PAINT_LINE', $line['name'], $isActive, (int) $currentUser['sub']);
 
 Response::ok(['line_id' => $lineId, 'is_active' => $isActive]);

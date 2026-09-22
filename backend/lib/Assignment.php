@@ -166,6 +166,7 @@ class Assignment
                 'status' => 'ASSIGNED',
                 'assigned_at' => date('Y-m-d H:i:s'),
             ]);
+            Notify::coachAssigned($pdo, $candidate, $coachId, $module);
         } else {
             $insert->execute([
                 'coach_id' => $coachId,
@@ -313,6 +314,11 @@ class Assignment
                 "UPDATE coach_assignments SET status = 'ASSIGNED', assigned_user_id = :user_id, assigned_at = :assigned_at WHERE id = :id"
             );
             $assign->execute(['user_id' => $userId, 'assigned_at' => date('Y-m-d H:i:s'), 'id' => $nextId]);
+
+            $coachIdStmt = $pdo->prepare('SELECT coach_id FROM coach_assignments WHERE id = :id');
+            $coachIdStmt->execute(['id' => $nextId]);
+            $assignedCoachId = (int) $coachIdStmt->fetchColumn();
+            Notify::coachAssigned($pdo, $userId, $assignedCoachId, $module);
         }
     }
 

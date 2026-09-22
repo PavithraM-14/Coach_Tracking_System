@@ -7,7 +7,7 @@ Auth::currentUser(); // any authenticated role may view
 $pdo = Db::get();
 $rows = $pdo->query(
     "SELECT bor.id AS board_outturn_id, c.coach_number, ct.name AS coach_type,
-            bor.board_outturn_datetime, u.full_name AS recorded_by, bor.status, lor.outturn_serial_no
+            bor.board_outturn_datetime, u.full_name AS recorded_by, bor.status, lor.outturn_serial_no, lor.railway
      FROM board_outturn_records bor
      JOIN coaches c ON c.id = bor.coach_id
      JOIN coach_types ct ON ct.id = c.coach_type_id
@@ -25,6 +25,7 @@ $data = array_map(function ($row) {
         'recorded_by' => $row['recorded_by'],
         'status' => $row['status'],
         'outturn_serial_no' => $row['outturn_serial_no'],
+        'railway' => $row['railway'],
     ];
 }, $rows);
 

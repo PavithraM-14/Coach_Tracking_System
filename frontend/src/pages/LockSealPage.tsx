@@ -128,7 +128,8 @@ export function LockSealPage() {
           <FieldReadOnly label="Plant" value={selectedCoach.plant} />
           <FieldReadOnly label="Production Year" value={selectedCoach.production_year} />
           <FieldReadOnly label="Local Outturn Date" value={formatDateForDisplay(toLocalDate(selectedCoach.local_outturn_datetime))} />
-          <FieldReadOnly label="Outturn Serial No." value={selectedCoach.outturn_serial_no ?? "—"} />
+          <FieldReadOnly label="Railway Serial No." value={selectedCoach.outturn_serial_no ?? "—"} />
+          <FieldReadOnly label="Railway" value={selectedCoach.railway ?? "—"} />
           <FieldReadOnly label="Predicted Date" value={selectedCoach.predicted_date ?? "—"} />
         </div>
       )}

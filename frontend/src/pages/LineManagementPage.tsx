@@ -11,12 +11,84 @@ import {
 } from "../api/paintIn";
 import { getAssemblyInLines, setAssemblyLineActive, setAssemblySlotActive } from "../api/assemblyIn";
 import { getMyAssignmentSummary } from "../api/assignments";
-import type { AssemblyInLine, AssemblyInLineSlot, AssignmentSummary, PaintLine, PaintLineSlot, WorklistCoach } from "../types";
+import { getLineBlockLog } from "../api/admin";
+import type {
+  AssemblyInLine,
+  AssemblyInLineSlot,
+  AssignmentSummary,
+  LineBlockLogRow,
+  PaintLine,
+  PaintLineSlot,
+  WorklistCoach,
+} from "../types";
 import { ApiError } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { FieldReadOnly } from "../components/ui/FieldReadOnly";
 import { ValidationMessage } from "../components/ui/ValidationMessage";
 import { DatePickerField, formatDateForDisplay } from "../components/ui/DatePickerField";
+import { ConfirmDialog } from "../components/ui/ConfirmDialog";
+import { formatDateTime } from "../utils/dateFormat";
+
+// Local to this file — both pool views need the exact same "confirm before
+// blocking/unblocking" flow, so this centralizes the pending-confirmation
+// state and renders one ConfirmDialog instead of window.confirm(), which
+// looks like a bare browser dialog rather than part of the app.
+function useConfirmDialog() {
+  const [pending, setPending] = useState<{ message: string; danger: boolean; run: () => void } | null>(null);
+
+  function requestConfirm(message: string, danger: boolean, run: () => void) {
+    setPending({ message, danger, run });
+  }
+
+  const dialog = (
+    <ConfirmDialog
+      open={pending !== null}
+      title={pending?.danger ? "Block this?" : "Unblock this?"}
+      message={pending?.message ?? ""}
+      danger={pending?.danger ?? false}
+      confirmLabel={pending?.danger ? "Block" : "Unblock"}
+      onConfirm={() => {
+        pending?.run();
+        setPending(null);
+      }}
+      onCancel={() => setPending(null)}
+    />
+  );
+
+  return { requestConfirm, dialog };
+}
+
+// Shared by both pools' views — shows the audit trail written by
+// backend/lib/BlockLog.php every time a line/slot is blocked or unblocked
+// (the is_active flag itself carries no history of who/when).
+function BlockActivityLog({ poolFamily, refreshKey }: { poolFamily: "PAINT" | "ASSEMBLY"; refreshKey: number }) {
+  const [log, setLog] = useState<LineBlockLogRow[] | null>(null);
+
+  useEffect(() => {
+    getLineBlockLog(poolFamily).then((res) => setLog(res.data));
+  }, [poolFamily, refreshKey]);
+
+  if (!log || log.length === 0) return null;
+
+  return (
+    <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-800">Recent Block / Unblock Activity</h3>
+      <div className="mt-2 divide-y divide-slate-100">
+        {log.map((entry, i) => (
+          <div key={i} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-xs">
+            <span>
+              <span className={entry.action === "BLOCK" ? "font-medium text-red-600" : "font-medium text-green-600"}>
+                {entry.action === "BLOCK" ? "Blocked" : "Unblocked"}
+              </span>{" "}
+              {entry.target_label} <span className="text-slate-400">by {entry.performed_by}</span>
+            </span>
+            <span className="flex-shrink-0 text-slate-400">{formatDateTime(entry.created_at)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // Read-only view of the Assembly line pool, for anyone who doesn't do
 // Assembly In data entry themselves (Admin, Assembly Admin). Paint's
@@ -30,6 +102,8 @@ function AssemblyLinesView() {
   const [bookedCount, setBookedCount] = useState<number | null>(null);
   const [togglingLineId, setTogglingLineId] = useState<number | null>(null);
   const [togglingSlotId, setTogglingSlotId] = useState<number | null>(null);
+  const [logRefreshKey, setLogRefreshKey] = useState(0);
+  const { requestConfirm, dialog: confirmDialog } = useConfirmDialog();
 
   function reload() {
     getAssemblyInLines().then((res) => {
@@ -42,21 +116,43 @@ function AssemblyLinesView() {
     reload();
   }, []);
 
+  function confirmToggle(line: AssemblyInLine) {
+    requestConfirm(
+      `${line.is_active ? "Block" : "Unblock"} ${line.name}? Coaches currently in it are not affected.`,
+      line.is_active,
+      () => handleToggle(line),
+    );
+  }
+
   async function handleToggle(line: AssemblyInLine) {
+    const verb = line.is_active ? "block" : "unblock";
     setTogglingLineId(line.assembly_in_line_id);
     try {
       await setAssemblyLineActive(line.assembly_in_line_id, !line.is_active);
+      setLogRefreshKey((k) => k + 1);
       reload();
+    } catch {
+      window.alert(`Failed to ${verb} ${line.name}.`);
     } finally {
       setTogglingLineId(null);
     }
   }
 
+  function confirmSlotToggle(slot: AssemblyInLineSlot) {
+    requestConfirm(`${slot.is_active ? "Block" : "Unblock"} Slot ${slot.slot_number}?`, slot.is_active, () =>
+      handleSlotToggle(slot),
+    );
+  }
+
   async function handleSlotToggle(slot: AssemblyInLineSlot) {
+    const verb = slot.is_active ? "block" : "unblock";
     setTogglingSlotId(slot.slot_id);
     try {
       await setAssemblySlotActive(slot.slot_id, !slot.is_active);
+      setLogRefreshKey((k) => k + 1);
       reload();
+    } catch {
+      window.alert(`Failed to ${verb} Slot ${slot.slot_number}.`);
     } finally {
       setTogglingSlotId(null);
     }
@@ -121,7 +217,7 @@ function AssemblyLinesView() {
                       key={slot.slot_id}
                       type="button"
                       disabled={slot.is_occupied || !clickableToToggle}
-                      onClick={() => clickableToToggle && handleSlotToggle(slot)}
+                      onClick={() => clickableToToggle && confirmSlotToggle(slot)}
                       title={
                         slot.is_occupied
                           ? `Slot ${slot.slot_number} — Coach ${slot.coach_number}${slot.recorded_by ? ` — by ${slot.recorded_by}` : ""}`
@@ -147,7 +243,7 @@ function AssemblyLinesView() {
               {canManage && (
                 <button
                   type="button"
-                  onClick={() => handleToggle(line)}
+                  onClick={() => confirmToggle(line)}
                   disabled={togglingLineId === line.assembly_in_line_id}
                   className={`mt-2 w-full rounded-lg px-2 py-1 text-xs font-medium disabled:opacity-50 ${
                     line.is_active
@@ -181,6 +277,9 @@ function AssemblyLinesView() {
           ))}
         </div>
       )}
+
+      {canManage && <BlockActivityLog poolFamily="ASSEMBLY" refreshKey={logRefreshKey} />}
+      {confirmDialog}
     </div>
   );
 }
@@ -209,22 +308,46 @@ function PaintInLines() {
   const [submitting, setSubmitting] = useState(false);
   const [togglingLineId, setTogglingLineId] = useState<number | null>(null);
   const [togglingSlotId, setTogglingSlotId] = useState<number | null>(null);
+  const [logRefreshKey, setLogRefreshKey] = useState(0);
+  const { requestConfirm, dialog: confirmDialog } = useConfirmDialog();
+
+  function confirmToggle(line: PaintLine) {
+    requestConfirm(
+      `${line.is_active ? "Block" : "Unblock"} ${line.name}? Coaches currently in it are not affected.`,
+      line.is_active,
+      () => handleToggle(line),
+    );
+  }
 
   async function handleToggle(line: PaintLine) {
+    const verb = line.is_active ? "block" : "unblock";
     setTogglingLineId(line.paint_line_id);
     try {
       await setPaintLineActive(line.paint_line_id, !line.is_active);
+      setLogRefreshKey((k) => k + 1);
       reload();
+    } catch {
+      window.alert(`Failed to ${verb} ${line.name}.`);
     } finally {
       setTogglingLineId(null);
     }
   }
 
+  function confirmSlotToggle(slot: PaintLineSlot) {
+    requestConfirm(`${slot.is_active ? "Block" : "Unblock"} Slot ${slot.slot_number}?`, slot.is_active, () =>
+      handleSlotToggle(slot),
+    );
+  }
+
   async function handleSlotToggle(slot: PaintLineSlot) {
+    const verb = slot.is_active ? "block" : "unblock";
     setTogglingSlotId(slot.slot_id);
     try {
       await setPaintSlotActive(slot.slot_id, !slot.is_active);
+      setLogRefreshKey((k) => k + 1);
       reload();
+    } catch {
+      window.alert(`Failed to ${verb} Slot ${slot.slot_number}.`);
     } finally {
       setTogglingSlotId(null);
     }
@@ -364,7 +487,7 @@ function PaintInLines() {
                       type="button"
                       disabled={slot.is_occupied || (!clickableToToggle && !clickableToSelect)}
                       onClick={() => {
-                        if (clickableToToggle) handleSlotToggle(slot);
+                        if (clickableToToggle) confirmSlotToggle(slot);
                         else if (clickableToSelect) setSelectedSlotId(slot.slot_id);
                       }}
                       title={
@@ -396,7 +519,7 @@ function PaintInLines() {
               {canManage && (
                 <button
                   type="button"
-                  onClick={() => handleToggle(line)}
+                  onClick={() => confirmToggle(line)}
                   disabled={togglingLineId === line.paint_line_id}
                   className={`mt-2 w-full rounded-lg px-2 py-1 text-xs font-medium disabled:opacity-50 ${
                     line.is_active
@@ -430,6 +553,8 @@ function PaintInLines() {
           ))}
         </div>
       )}
+
+      {canManage && <BlockActivityLog poolFamily="PAINT" refreshKey={logRefreshKey} />}
 
       {canAllocate && (
         <div className="mt-6 max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -502,6 +627,7 @@ function PaintInLines() {
           </button>
         </div>
       )}
+      {confirmDialog}
     </div>
   );
 }

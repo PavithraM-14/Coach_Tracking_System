@@ -18,8 +18,12 @@ $sql = "SELECT ct.id AS coach_type_id, ct.code, ct.name, ct.is_lhb,
         LEFT JOIN fixed_schedules fs ON fs.coach_type_id = ct.id";
 $params = [];
 if ($q !== '') {
-    $sql .= ' WHERE ct.name LIKE :q OR ct.code LIKE :q';
-    $params['q'] = "%{$q}%";
+    // PDO+mysqlnd rejects reusing the same named placeholder twice when
+    // PDO::ATTR_EMULATE_PREPARES is off (as configured in Db.php) — bind the
+    // same value to two distinct placeholders instead.
+    $sql .= ' WHERE ct.name LIKE :q1 OR ct.code LIKE :q2';
+    $params['q1'] = "%{$q}%";
+    $params['q2'] = "%{$q}%";
 }
 $sql .= ' ORDER BY ct.name';
 

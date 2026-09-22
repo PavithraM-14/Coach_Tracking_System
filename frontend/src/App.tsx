@@ -9,6 +9,7 @@ import { HomePage } from "./pages/HomePage";
 import { AdminUsersPage } from "./pages/AdminUsersPage";
 import { AdminProductionOrdersPage } from "./pages/AdminProductionOrdersPage";
 import { AdminSchedulePage } from "./pages/AdminSchedulePage";
+import { AdminScheduleReportPage } from "./pages/AdminScheduleReportPage";
 import { ShellProductionPage } from "./pages/ShellProductionPage";
 import { ShellOutturnEntryPage } from "./pages/ShellOutturnEntryPage";
 import { ShellOutturnHistoryPage } from "./pages/ShellOutturnHistoryPage";
@@ -16,8 +17,10 @@ import { FurnishingInPage } from "./pages/FurnishingInPage";
 import { FurnishingInHistoryPage } from "./pages/FurnishingInHistoryPage";
 import { LineManagementPage } from "./pages/LineManagementPage";
 import { PaintInPage } from "./pages/PaintInPage";
+import { MovePaintCoachPage } from "./pages/MovePaintCoachPage";
 import { PaintOutPage } from "./pages/PaintOutPage";
 import { AssemblyInPage } from "./pages/AssemblyInPage";
+import { MoveAssemblyCoachPage } from "./pages/MoveAssemblyCoachPage";
 import { AssemblyOutPage } from "./pages/AssemblyOutPage";
 import { PaintRecordsPage } from "./pages/PaintRecordsPage";
 import { AssemblyRecordsPage } from "./pages/AssemblyRecordsPage";
@@ -92,6 +95,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["ADMIN"]}>
                         <AdminSchedulePage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/admin/reports/schedule"
+                    element={
+                      <ProtectedRoute allowedRoles={["ADMIN"]}>
+                        <AdminScheduleReportPage />
                       </ProtectedRoute>
                     }
                   />
@@ -182,6 +193,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["PAINT"]} requiredModule="PAINT">
                         <PaintInPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/paint-in/move"
+                    element={
+                      <ProtectedRoute allowedRoles={["PAINT"]} requiredModule="PAINT">
+                        <MovePaintCoachPage />
                       </ProtectedRoute>
                     }
                   />
@@ -288,6 +307,14 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION"]} requiredModule="ASSEMBLY_IN">
                         <AssemblyInPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/assembly-in/move"
+                    element={
+                      <ProtectedRoute allowedRoles={["ASSEMBLY_PRODUCTION"]} requiredModule="ASSEMBLY_IN">
+                        <MoveAssemblyCoachPage />
                       </ProtectedRoute>
                     }
                   />

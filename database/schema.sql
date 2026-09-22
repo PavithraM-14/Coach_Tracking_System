@@ -169,6 +169,22 @@ CREATE TABLE assembly_in_line_slots (
   FOREIGN KEY (assembly_in_line_id) REFERENCES assembly_in_lines(id)
 );
 
+-- Audit trail for every Block/Unblock action on a Paint/Assembly line or
+-- slot (paint_lines/assembly_in_lines' and their *_slots' is_active flags
+-- carry no history of their own — this is where "who blocked this and when"
+-- actually lives). target_label is denormalized (e.g. "Paint Line 3" or
+-- "Paint Line 3, Slot 5") so the log reads cleanly without re-joining back
+-- to a line/slot that may itself have since been unblocked or renumbered.
+CREATE TABLE line_block_log (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  pool VARCHAR(20) NOT NULL,           -- PAINT_LINE, PAINT_SLOT, ASSEMBLY_LINE, ASSEMBLY_SLOT
+  target_label VARCHAR(50) NOT NULL,
+  action VARCHAR(10) NOT NULL,         -- BLOCK, UNBLOCK
+  performed_by_user_id INT NOT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (performed_by_user_id) REFERENCES users(id)
+);
+
 CREATE TABLE assembly_out_lines (
   id INT AUTO_INCREMENT PRIMARY KEY,
   code VARCHAR(10) NOT NULL UNIQUE,
@@ -449,10 +465,14 @@ CREATE TABLE local_outturn_records (
   remarks VARCHAR(255) NULL,
   recorded_by_user_id INT NOT NULL,
   status VARCHAR(20) NOT NULL DEFAULT 'COMPLETED',
-  outturn_serial_no VARCHAR(30) NULL, -- dispatch/outturn tracking number entered here, distinct
-                                       -- from coaches.serial_no (manufacturing) — carried through
-                                       -- Lock & Seal / Board Outturn / Physical Dispatch via a direct
-                                       -- coach_id join (see those stages' worklist.php/list.php)
+  outturn_serial_no VARCHAR(30) NULL, -- shown in the UI as "Railway Serial No." — dispatch/outturn
+                                       -- tracking number entered here, distinct from coaches.serial_no
+                                       -- (manufacturing) — carried through Lock & Seal / Board Outturn /
+                                       -- Physical Dispatch via a direct coach_id join (see those
+                                       -- stages' worklist.php/list.php)
+  railway VARCHAR(10) NULL,           -- which railway zone/administration the coach is being handed to
+                                       -- (e.g. ICF, SR) — entered alongside the serial no, propagated
+                                       -- downstream the same way
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (coach_id) REFERENCES coaches(id),
   FOREIGN KEY (assembly_out_id) REFERENCES assembly_out_transactions(id),
@@ -527,6 +547,24 @@ CREATE TABLE coach_assignments (
   UNIQUE KEY uq_coach_module (coach_id, module),
   FOREIGN KEY (coach_id) REFERENCES coaches(id),
   FOREIGN KEY (assigned_user_id) REFERENCES users(id)
+);
+
+-- One row per notified user. Written from two places: Assignment.php's
+-- assignOrQueue()/fillCapacityForUser() (COACH_ASSIGNED, whenever a coach is
+-- actually handed to a specific user — covers all 9 stages uniformly since
+-- both methods are module-agnostic), and physical-dispatch/create.php
+-- (COACH_COMPLETED, one row per active ADMIN, fired on the pipeline's last
+-- stage). See backend/lib/Notify.php.
+CREATE TABLE notifications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  type VARCHAR(30) NOT NULL,             -- COACH_ASSIGNED, COACH_COMPLETED
+  coach_id INT NOT NULL,
+  message VARCHAR(255) NOT NULL,
+  is_read TINYINT(1) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (coach_id) REFERENCES coaches(id)
 );
 
 -- Supervisor-Coach Assignments (In-Out) Matrix, Paint Shop only: which Paint
