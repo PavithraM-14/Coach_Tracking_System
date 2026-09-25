@@ -15,26 +15,6 @@ React + PHP + MySQL, seeded from cleaned legacy reference data. See
 - `database/` — `schema.sql` (all tables) and `seed.sql` (reference/master data
   only — transactional tables start empty).
 
-## Local setup (XAMPP already installed)
-
-1. Start **MySQL** from the XAMPP Control Panel (Apache is not needed).
-2. Import the database (only needed once, or after wiping it):
-   ```
-   C:\xampp\mysql\bin\mysql.exe -u root < database/schema.sql
-   C:\xampp\mysql\bin\mysql.exe -u root < database/seed.sql
-   ```
-3. Start the backend:
-   ```
-   C:\xampp\php\php.exe -S localhost:8000 -t backend
-   ```
-4. Start the frontend:
-   ```
-   cd frontend
-   npm install
-   npm run dev
-   ```
-5. Open http://localhost:5173.
-
 ## Demo accounts
 
 Every role from the functional doc has its own login (13 total), plus one
